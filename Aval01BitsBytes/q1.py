@@ -5,7 +5,6 @@ import os, sys, struct
 # Os argumentos passados na execução do código
 args = sys.argv
 
-
 #--------------------------------------Acessar argumentos passados------------------------------------------------
 # Garamtir que pelo menos dois argumentos foram passados - 
 if len(args) >= 3:  
@@ -30,13 +29,11 @@ if len(args) >= 3:
             rede = struct.unpack(">BBBB",redebytes)
             
 
-
             #----------------------------------Broadcast------------------------------------------------------------------
             #Mesma lógica acima, mas deixei a quantidade de bits zeros todos em 1
             broadcastbytes = struct.pack(">I", (ip >> mask) << mask | (1<<mask)-1)
             broadcast = struct.unpack(">BBBB",broadcastbytes)
             
-
 
             #----------------------------------Gateway--------------------------------------------------------------------
             gatewaybytes = struct.pack(">I", ((ip >> mask) << mask | (1<<mask)+(hosts)))
