@@ -11,5 +11,3 @@ Arquivos e Diretorios:
 |---Primeira_Unidade/
 |       |--leitor_hex.py  (Estudando bits e bytes)
 |       |--script_conversor_base10_base6.py  (Estudo de conversor)
-|
-|---

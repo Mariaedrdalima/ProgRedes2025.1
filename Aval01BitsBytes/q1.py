@@ -36,7 +36,7 @@ if len(args) >= 3:
             
 
             #----------------------------------Gateway--------------------------------------------------------------------
-            gatewaybytes = struct.pack(">I", ((ip >> mask) << mask | (1<<mask)+(hosts)))
+            gatewaybytes = struct.pack(">I", ((ip >> mask) << mask | (1<<mask)-2)) #menos 2 para chegar ao ultimo endereõ valido
             gateway = struct.unpack(">BBBB",gatewaybytes)
 
 
@@ -56,7 +56,7 @@ if len(args) >= 3:
             break
 
         except struct.error as e:
-            print(f'Erro: Revisar o formato dos argumentos passados. Cada bloco do ip pode variar de 0 a 255 e bits zeros de 0 a 32.')
+            print(f'Erro: Revisar o formato dos argumentos passados. Cada bloco do ip pode variar de 0 a 255 e bits zeros de 2 a 32.')
             break
 
 
