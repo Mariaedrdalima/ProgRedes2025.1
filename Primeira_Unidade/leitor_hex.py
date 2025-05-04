@@ -18,7 +18,7 @@ with open(arqdir, 'wb') as arq:
 if len(args) >= 3:  # Garantir que pelo menos dois argumentos foram passados
     ip = args[1]
     mask = args[2]
-    print(f"IP: {ip}, Bits zero: {porta}")
+    print(f"IP: {ip}, Bits zero: {mask}")
 
 else:
     print("Uso correto: ./leitor_hex <IP> <QUANTIDADE DE BITS ZERO - informar um número inteiro de 0 a 32>")
