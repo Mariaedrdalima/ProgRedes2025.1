@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, sys, struct
+import sys, struct
 
 # Os argumentos passados na execução do código
 args = sys.argv
@@ -56,7 +56,7 @@ if len(args) >= 3:
             break
 
         except struct.error as e:
-            print(f'Erro: Revisar o formato dos argumentos passados. Cada bloco do ip pode variar de 0 a 255 e bits zeros de 2 a 32.')
+            print(f'Erro: Revisar o formato dos argumentos passados. Cada bloco do ip pode variar de 0 a 255 e bits zero de 2 a 32.')
             break
 
 
