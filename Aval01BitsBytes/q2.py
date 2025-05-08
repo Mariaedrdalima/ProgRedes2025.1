@@ -57,16 +57,16 @@ else:
     ]
 
     # Cabeçalho da tabela
-    print("+" + "-"*59 + "+")
-    print(f"| {'Texto':<25} | {'Bits':>5} | {'Nonce':>8} | {'Tempo (s)':>10} |")
-    print("+" + "-"*59 + "+")
+    print("+" + "-"*168 + "+")
+    print(f"  {'Texto':<25}   {'Bits':>5}   {'Nonce':>8}   {'Tempo (s)':>2}   {'Hash':>10}")
+    print("+" + "-"*168 + "+")
         
     for texto, bitsZero in tabela_casos:
         data = texto.encode()
         nonce, hash_bytes, tempo = findNonce(data, bitsZero)
             
         #Formatando a linha da tabela
-        print(f"| {texto[:25]:<25} | {bitsZero:>5} | {nonce:>8} | {tempo:>10.6f} |")
+        print(f"| {texto[:25]:<25} | {bitsZero:>5} | {nonce:>8} | {tempo:>10.6f} | {hash_bytes}")
 
     # Rodapé da tabela
-    print("+" + "-"*59 + "+")
+    print("+" + "-"*168 + "+")
