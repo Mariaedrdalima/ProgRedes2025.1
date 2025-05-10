@@ -1,7 +1,27 @@
-#!/usr/bin/env python3
+# #!/usr/bin/env python3
 
-import os, sys, struct
+# import os, sys, struct
 
-dir_atual= os.getcwd()
+# dir_atual= os.getcwd()
 
-print(dir_atual)
+# print(dir_atual)
+import os
+
+dir_atual = os.path.dirname(__file__)
+dir_image = os.path.join(dir_atual, '20190929_175154.jpg')
+
+try:
+    with open(dir_image, 'rb') as f:
+
+        #Pega os primeiros 6 bytes
+        header = f.read(6)
+
+        # Posições 4 e 5 = Tamanho dos metadados APP1
+        app1DataSize = int.from_bytes(header[4:6], byteorder='big')
+        print(f'Tamanho dos metadados (app1DataSize): {app1DataSize}')
+
+except PermissionError:
+    print('Erro: Verifique as permissões de leitura do arquivo.')
+
+except FileNotFoundError:
+    print('Erro: Imagem não foi localizada.')
