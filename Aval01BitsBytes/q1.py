@@ -36,7 +36,8 @@ if len(args) >= 3:
             
 
             #----------------------------------Gateway--------------------------------------------------------------------
-            gatewaybytes = struct.pack(">I", ((ip >> mask) << mask | (1<<mask)-2)) #menos 2 para chegar ao ultimo endereõ valido
+            #O gateway é = o endereço da rede concatenado com o penultimo endereço valido
+            gatewaybytes = struct.pack(">I", ((ip >> mask) << mask | (1<<mask)-2)) #menos 2 para chegar ao ultimo endereco valido
             gateway = struct.unpack(">BBBB",gatewaybytes)
 
 
