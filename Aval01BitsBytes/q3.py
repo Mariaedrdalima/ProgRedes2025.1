@@ -8,7 +8,7 @@
 import os
 
 dir_atual = os.path.dirname(__file__)
-dir_image = os.path.join(dir_atual, '20190929_175154.jpg')
+dir_image = os.path.join(dir_atual, 'IMG_20250509_184205.jpg')
 
 try:
     
