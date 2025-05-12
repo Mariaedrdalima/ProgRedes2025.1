@@ -1,4 +1,4 @@
-Adicionei shebang #!/usr/bin/env python3 nas questões 01 e 02
+Adicionei shebang #!/usr/bin/env python3 nas questões. 01 e 02 permite passar argumento via linha de comando
 *******************************************************************************************************************************************************
 Na questão 01 seguirá o seguinte formato:
 /exemplo/user#./q1 <ip> <bits em zero>
