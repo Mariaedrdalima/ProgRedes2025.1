@@ -71,15 +71,15 @@ b) A partir da posição 18 de app1Data há efetivamente os metadados. Cada
 metadado tem o formato:
 
 
-01 00 00 03 00 00 00 01 0F F0
-01 01 00 03 00 00 00 01 0B F4
+>>>>01 00 00 03 00 00 00 01 0F F0
+>>>>01 01 00 03 00 00 00 01 0B F4
 
-• 2bytes - qual o metadado: 0100
-• 2bytes - o tipo do metadado: 0003
-• 4 bytes - o número de repetições que esse metadados tem: 00000001
-• 4 bytes - o valor do metadado: 0ff0
+>>>>• 2bytes - qual o metadado: 0100
+>>>>• 2bytes - o tipo do metadado: 0003
+>>>>• 4 bytes - o número de repetições que esse metadados tem: 00000001
+>>>>• 4 bytes - o valor do metadado: 0ff0
 
-• 2bytes - qual o metadado: 0101
-• 2bytes - o tipo do metadado: 0003
-• 4 bytes - o número de repetições que esse metadados tem: 00000001
-• 4 bytes - o valor do metadado: 0bf4
+>>>>• 2bytes - qual o metadado: 0101
+>>>>• 2bytes - o tipo do metadado: 0003
+>>>>• 4 bytes - o número de repetições que esse metadados tem: 00000001
+>>>>• 4 bytes - o valor do metadado: 0bf4
