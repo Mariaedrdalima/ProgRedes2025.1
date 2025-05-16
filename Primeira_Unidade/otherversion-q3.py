@@ -36,8 +36,6 @@ try:
             count = int.from_bytes(app1Data[pos+4:pos+8], byteorder='big') #número de repeticoes (tamanho)
             valor = app1Data[pos+8:pos+12] #Valor do metadado
 
-
-            
             if tag == '0100':  #Largura
                 if tipo == 3:  #tipo "Unsigned short"
                     largura = int.from_bytes(valor[:2], byteorder='big')
@@ -48,14 +46,44 @@ try:
                     altura = int.from_bytes(valor[:2], byteorder='big')
                 elif tipo == 4:  #tipo "Unsigned long"
                     altura = int.from_bytes(valor, byteorder='big')
-           
-            pos += 12  #Cada metadado ocupa 12 bytes, avanço de 12 em 12
 
-    print(f'''
-        Tamanho dos metadados APP1: {app1DataSize}
-        Numero de metadados: {num_metadados}
-        Largura da imagem: {largura}
-        Altura da imagem: {altura}''')
+#-----------------------------------------SESSÃO PARA TRATAR OS DADOS DE GPS-----------------------------------
+            elif tag == '8825':
+                #88 25 00 04 00 00 00 01 00 00 1F 68
+                inicio_metadados_gps = int.from_bytes(app1Data[pos+8:pos+12], byteorder='big') + 12
+                metadados_gps = pos[inicio_metadados_gps:]
+
+                print(f'''
+
+                    *******************************************
+                    Dados de GPS
+                    
+                    Iniciando na Posição {pos}
+                    Numero de Metatados no Bloco GPS {inicio_metadados_gps}
+                ''')
+
+                
+           
+#--------------------------------------------------------------------------------------------------------------           
+            pos += 12  #Cada metadado ocupa 12 bytes, avanço de 12 em 12
+        
+        # print(f'''
+        #             *******************************************
+        #             Tamanho dos metadados APP1: {app1DataSize}
+        #             Numero de metadados: {num_metadados}
+
+        #             Largura da imagem: {largura}
+        #             Altura da imagem: {altura}
+
+        #             Referência de Latitude:
+        #             Latitude:
+
+        #             Referência de Longitude:
+        #             Longitude:
+
+        #             Referência de Altitude:
+        #             Altitude:
+        #             ''')
 
 except PermissionError:
     print('Erro: Verifique as permissões de leitura do arquivo.')
