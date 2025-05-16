@@ -50,16 +50,23 @@ try:
 #-----------------------------------------SESSÃO PARA TRATAR OS DADOS DE GPS-----------------------------------
             elif tag == '8825':
                 #88 25 00 04 00 00 00 01 00 00 1F 68
-                inicio_metadados_gps = int.from_bytes(app1Data[pos+8:pos+12], byteorder='big') + 12
-                metadados_gps = pos[inicio_metadados_gps:]
+                start_datagps = int.from_bytes(app1Data[pos+8:pos+12], byteorder='big') + 12
+
+                total_datagps = int.from_bytes(app1Data[start_datagps-4:start_datagps-2], byteorder='big') * 12
+
+                data_gps = app1Data[start_datagps:(start_datagps+total_datagps)]
+                
+                #00 09 00 01 00 02 00 00 00 02 53 00 00 00 
+                #metadados_gps = pos[start_datagps:(start_datagps)]
 
                 print(f'''
-
                     *******************************************
                     Dados de GPS
                     
                     Iniciando na Posição {pos}
-                    Numero de Metatados no Bloco GPS {inicio_metadados_gps}
+                    Inicio dos Metatados no Bloco GPS {start_datagps}
+                    Número de metadados GPS: {total_datagps}
+                    Data GPS: {data_gps}
                 ''')
 
                 
