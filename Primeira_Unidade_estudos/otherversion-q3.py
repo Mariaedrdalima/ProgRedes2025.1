@@ -20,9 +20,12 @@ try:
         #Numero de metadados (posições 16-17)
         num_metadados = int.from_bytes(app1Data[16:18], byteorder='big')
         
-        # Procurar pelos metadados de largura (0x0100) e altura (0x0101)
+        # Procurar pelos metadados
         largura = 0
         altura = 0
+        GPSLatitudeRef = ''
+        GPSLongitude = ''
+
 
 
         #(3.b) "A partir da posição 18 de app1Data há efetivamente os metadados."
@@ -56,50 +59,49 @@ try:
                 total_datagps = int.from_bytes(app1Data[start_datagps-4:start_datagps-2], byteorder='big') * 12
                 data_gps = app1Data[start_datagps:(start_datagps+total_datagps)]
                 
+                gps = 0
 
-                gps = start_datagps-6
                 for _ in range(total_datagps):
 
                     #tags:
-                    tag = data_gps[gps:gps+2].hex() #Qual o metadado 
-                    tipo = int.from_bytes(app1Data[pos+2:pos+4], byteorder='big') #O tipo de metadado
-                    count = int.from_bytes(app1Data[pos+4:pos+8], byteorder='big') #número de repeticoes (tamanho)
-                    valor = app1Data[pos+8:pos+12] #Valor do metadado
+                    tag_gps = data_gps[gps:gps+2].hex() #Qual o metadado 
+                    tipo_gps = int.from_bytes(data_gps[gps+2:gps+4], byteorder='big') #O tipo de metadado
+                    count_gps = int.from_bytes(data_gps[gps+4:gps+8], byteorder='big') #número de repeticoes (tamanho)
+                    valor_gps = data_gps[gps+8:gps+12] #Valor do metadado
+
+                    if tag == '0001':  #Referencia de Latitue
+                        if tipo == 2:  #tipo "string"
+                            GPSLatitudeRef = valor[:2]
+                    elif tag == '0003': #Referencia de Longitude
+                        if tipo == 2: #tipoe "string"
+                            GPSLongitude = valor[:2]
+                    print(f'Data atual iniciando em: {data_gps[gps]} - tag {tag_gps} - valor {valor_gps}')
 
                     gps += 12
-
-                print(f'''
-                    *******************************************
-                    Dados de GPS
+                print(f'Metadados GPS: {data_gps}')
+                # print(f'''
+                #     *******************************************
+                #     Dados de GPS
                     
-                    Iniciando na Posição {pos}
-                    Inicio dos Metatados no Bloco GPS {start_datagps}
-                    Número de metadados GPS: {total_datagps}
-                    Data GPS: {data_gps}
-                ''')
-
-                
+                #     Iniciando na Posição {pos}
+                    
+                #     Inicio dos Metatados no Bloco GPS {start_datagps}
+                #     Número de metadados GPS: {total_datagps}
+                #     Data GPS: {data_gps}
+                    
+                # ''')
+               
            
 #--------------------------------------------------------------------------------------------------------------           
             pos += 12  #Cada metadado ocupa 12 bytes, avanço de 12 em 12
         
-        # print(f'''
-        #             *******************************************
-        #             Tamanho dos metadados APP1: {app1DataSize}
-        #             Numero de metadados: {num_metadados}
-
-        #             Largura da imagem: {largura}
-        #             Altura da imagem: {altura}
-
-        #             Referência de Latitude:
-        #             Latitude:
-
-        #             Referência de Longitude:
-        #             Longitude:
-
-        #             Referência de Altitude:
-        #             Altitude:
-        #             ''')
+        print(f'''
+                    *******************************************
+                    Tamanho dos metadados APP1: {app1DataSize}
+                    Numero de metadados: {num_metadados}
+                    Largura da imagem: {largura}
+                    Altura da imagem: {altura}
+                    ''')
 
 except PermissionError:
     print('Erro: Verifique as permissões de leitura do arquivo.')
@@ -109,3 +111,7 @@ except FileNotFoundError:
 
 except ValueError as e:
     print(f'Erro: {e}')
+
+except IndexError:
+    print(f'O indice referenciado para a lista de metadados é superior ao range de metadados. Execução interrompida.')
+    print(f'Metadados GPS: {data_gps}')
