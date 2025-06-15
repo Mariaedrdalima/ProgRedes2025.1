@@ -1,37 +1,32 @@
-1) Faça um programa que recebe na linha de comando o nome de um arquivo
-correspondente a uma captura de tráfego (arquivo .pcap) e apresenta, para cada
-pacote:
+#Analisador de Pacotes PCAP
+##Este script Python analisa arquivos de captura de rede no formato PCAP, exibindo informações detalhadas sobre os pacotes e protocolos de rede.
 
-a) Os MAC addresses de origem e destino do frame;
+###Funcionalidades:
+Análise de protocolos Ethernet, IPv4, ARP, ICMP, TCP e UDP
+Exibição de metadados de pacotes (timestamps, endereços, portas)
+Controle de handshake TCP para identificar início de conexões
+Exibição dos primeiros 200 bytes de dados de aplicação após handshake TCP
+Suporte a arquivos PCAP no formato padrão
 
-b) Se o protocolo transportado no enlace for ARP ou RARP e o tipo do protocolo
-for IPv4, apresente:
-	• O código da operação (ARP ou RARP)
-	• Os MAC adresses do remetente e do destinatário;
-	• Os endereços IPv4 do remetente e do destinatário;
+###Como Usar
+Certifique-se de ter Python 3 instalado
+Execute o script passando um arquivo PCAP como argumento:
 
-c) Se o protocolo transportado no enlace for IPv4:
-	• Mostre os endereço IPv4 de origem e destino;
-	• Escolha mais quatro campos para também exibir;
+python3 q1.py arquivo_captura.pcap
 
-d) Se o protocolo transportado no IPv4 for ICMP:
-	▪ Mostre o nome do tipo do pacote (basta cinco, ignore outros)
-	▪ Exiba também, se o tipo for echo request ou echo reply,:
-		• O número do identificador;
-		• O número de sequência.
+Protocolos Suportados: Ethernet, ARP, IPv4, ICMP, TCP e UDP.
 
-e) Se o protocolo transportado no IPv4 for UDP:
-	• Mostre as portas de origem e destino do datagrama;
+Exemplo de Saída:
 
-f) Se o protocolo transportado no IPv4 for TCP:
-	• Mostre as portas de origem e destino do datagrama;
-	• Exiba mais quatro campos a sua escolha;
+=== Pacote @ 2023-01-01 12:34:56.789012 ===
+MAC Origem: aa:bb:cc:dd:ee:ff -> MAC Destino: ff:ee:dd:cc:bb:aa
+IP Origem: 192.168.1.1 -> IP Destino: 192.168.1.2
+  Versão: 4 | IHL: 20 | Tamanho Total: 60 | ID: 1234 | TTL: 64 | Protocolo: 6
+  TCP Porta Origem: 443 -> Porta Destino: 54321
+    Seq: 123456789 | Ack: 987654321 | Flags: 0b10010 | Janela: 64240
+    Dados de aplicação (até 200 bytes): b'\x17\x03\x03\x00...'
 
-g) Para os protocolos de aplicação carreados no TCP, exiba até 200 bytes em
-cada sentido no primeiro pacote depois dos SYN, SYN/ACK.
-
-*******************************************************************************************************
-2) Faça um programa que receba na linha de comando um arquivo com o nome de uma
-foto, em formato jpeg, e abra um navegador com um mapa contendo o ponto de
-localização em que a foto foi tirada (Se não existe georeferenciamento na foto,
-indique o erro). Use o OpenStreet Map. A única biblioteca permitida é subprocess.
+Observações
+O script foi desenvolvido para fins educacionais
+Funciona com arquivos PCAP no formato padrão (little-endian)
+Exibe apenas os primeiros 200 bytes de dados de aplicação após handshake TCP completo

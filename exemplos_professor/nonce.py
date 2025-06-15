@@ -12,8 +12,9 @@ while True:
 	if (fourBytes >> (32-bitsZero)) == 0:
 		print (f"Nonce encontrado: {nonce} ({nonce:04x})",
 			   "Hash[0:4]:", hash[0:4])
-        break
+		break
 	nonce += 1
 	
 	if (nonce % 10000) == 0:
 		print ("Tentando nonce ", nonce)
+	
