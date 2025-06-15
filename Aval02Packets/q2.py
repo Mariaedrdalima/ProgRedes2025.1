@@ -39,19 +39,8 @@ try:
             count = int.from_bytes(app1Data[pos+4:pos+8], byteorder='big') #número de repeticoes (tamanho)
             valor = app1Data[pos+8:pos+12] #Valor do metadado
 
-            if tag == '0100':  #Largura
-                if tipo == 3:  #tipo "Unsigned short"
-                    largura = int.from_bytes(valor[:2], byteorder='big')
-                elif tipo == 4:  #tipo "Unsigned long"
-                    largura = int.from_bytes(valor, byteorder='big')
-            elif tag == '0101':  #Altura
-                if tipo == 3:  #tipo "Unsigned short"
-                    altura = int.from_bytes(valor[:2], byteorder='big')
-                elif tipo == 4:  #tipo "Unsigned long"
-                    altura = int.from_bytes(valor, byteorder='big')
-
 #-----------------------------------------SESSÃO PARA TRATAR OS DADOS DE GPS-----------------------------------
-            elif tag == '8825':
+            if tag == '8825':
                 #88 25 00 04 00 00 00 01 00 00 1F 68
                 #00 09 00 01 00 02 00 00 00 02 53 00 00 00 
 
@@ -75,7 +64,7 @@ try:
                     elif tag == '0003': #Referencia de Longitude
                         if tipo == 2: #tipoe "string"
                             GPSLongitude = valor[:2]
-                    print(f'Data atual iniciando em: {data_gps[gps]} - tag {tag_gps} - valor {valor_gps}')
+                    #print(f'Data atual iniciando em: {data_gps[gps]} - tag {tag_gps} - valor {valor_gps}')
 
                     gps += 12
                 print(f'Metadados GPS: {data_gps}')
@@ -112,6 +101,6 @@ except FileNotFoundError:
 except ValueError as e:
     print(f'Erro: {e}')
 
-except IndexError:
-    print(f'O indice referenciado para a lista de metadados é superior ao range de metadados. Execução interrompida.')
-    print(f'Metadados GPS: {data_gps}')
+# except IndexError:
+#     print(f'O indice referenciado para a lista de metadados é superior ao range de metadados. Execução interrompida.')
+#     print(f'Metadados GPS: {data_gps}')
