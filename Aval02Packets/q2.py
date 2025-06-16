@@ -1,106 +1,162 @@
 #!/usr/bin/env python3
 
 import os
+import sys
+import subprocess
+import struct
 
-dir_atual = os.path.dirname(__file__)
-dir_image = os.path.join(dir_atual, 'IMG_20250509_184205.jpg')
+def analisar_imagem(nome_arquivo):
+    try:
+        with open(nome_arquivo, 'rb') as arquivo:
+            if arquivo.read(2) != b'\xff\xd8':
+                print("Erro: O arquivo não parece ser uma imagem JPEG válida.")
+                return None
 
-try:
-    #(03): Ler os primeiros 6 bytes para obter app1DataSize
-    with open(dir_image, 'rb') as f:
-        header = f.read(6)
-        app1DataSize = int.from_bytes(header[4:6], byteorder='big')
-    
-    #(3.a): Ler os metadados APP1
-    with open(dir_image, 'rb') as f:
-
-        f.read(4)  #Descartar os primeiros 4 bytes
-        app1Data = f.read(app1DataSize)
-        
-        #Numero de metadados (posições 16-17)
-        num_metadados = int.from_bytes(app1Data[16:18], byteorder='big')
-        
-        # Procurar pelos metadados
-        largura = 0
-        altura = 0
-        GPSLatitudeRef = ''
-        GPSLongitude = ''
-
-
-
-        #(3.b) "A partir da posição 18 de app1Data há efetivamente os metadados."
-        pos = 18 
-        
-        for _ in range(num_metadados):
-
-            #tags:
-            tag = app1Data[pos:pos+2].hex() #Qual o metadado 
-            tipo = int.from_bytes(app1Data[pos+2:pos+4], byteorder='big') #O tipo de metadado
-            count = int.from_bytes(app1Data[pos+4:pos+8], byteorder='big') #número de repeticoes (tamanho)
-            valor = app1Data[pos+8:pos+12] #Valor do metadado
-
-#-----------------------------------------SESSÃO PARA TRATAR OS DADOS DE GPS-----------------------------------
-            if tag == '8825':
-                #88 25 00 04 00 00 00 01 00 00 1F 68
-                #00 09 00 01 00 02 00 00 00 02 53 00 00 00 
-
-                start_datagps = int.from_bytes(app1Data[pos+8:pos+12], byteorder='big') + 12
-                total_datagps = int.from_bytes(app1Data[start_datagps-4:start_datagps-2], byteorder='big') * 12
-                data_gps = app1Data[start_datagps:(start_datagps+total_datagps)]
+            while True:
+                marker = arquivo.read(2)
+                if not marker:
+                    break
                 
-                gps = 0
+                if marker == b'\xff\xe1':
+                    break
+                elif marker[0] == 0xff:
+                    tamanho = int.from_bytes(arquivo.read(2), 'big')
+                    arquivo.seek(tamanho - 2, 1)
+                else:
+                    break
 
-                for _ in range(total_datagps):
+            if not marker or marker != b'\xff\xe1':
+                print("Erro: Segmento EXIF não encontrado na imagem.")
+                return None
 
-                    #tags:
-                    tag_gps = data_gps[gps:gps+2].hex() #Qual o metadado 
-                    tipo_gps = int.from_bytes(data_gps[gps+2:gps+4], byteorder='big') #O tipo de metadado
-                    count_gps = int.from_bytes(data_gps[gps+4:gps+8], byteorder='big') #número de repeticoes (tamanho)
-                    valor_gps = data_gps[gps+8:gps+12] #Valor do metadado
+            tamanho_app1 = int.from_bytes(arquivo.read(2), 'big') - 2
+            dados_app1 = arquivo.read(tamanho_app1)
 
-                    if tag == '0001':  #Referencia de Latitue
-                        if tipo == 2:  #tipo "string"
-                            GPSLatitudeRef = valor[:2]
-                    elif tag == '0003': #Referencia de Longitude
-                        if tipo == 2: #tipoe "string"
-                            GPSLongitude = valor[:2]
-                    #print(f'Data atual iniciando em: {data_gps[gps]} - tag {tag_gps} - valor {valor_gps}')
+            if not dados_app1.startswith(b'Exif\x00\x00'):
+                print("Erro: Dados EXIF inválidos.")
+                return None
 
-                    gps += 12
-                print(f'Metadados GPS: {data_gps}')
-                # print(f'''
-                #     *******************************************
-                #     Dados de GPS
-                    
-                #     Iniciando na Posição {pos}
-                    
-                #     Inicio dos Metatados no Bloco GPS {start_datagps}
-                #     Número de metadados GPS: {total_datagps}
-                #     Data GPS: {data_gps}
-                    
-                # ''')
-               
-           
-#--------------------------------------------------------------------------------------------------------------           
-            pos += 12  #Cada metadado ocupa 12 bytes, avanço de 12 em 12
+            tiff_header = dados_app1[6:]
+            byte_order = '>' if tiff_header[0] == 0x4D else '<'
+
+            ifd_offset = struct.unpack(byte_order + 'I', tiff_header[4:8])[0]
+            ifd_data = tiff_header[ifd_offset:]
+
+            num_entradas = struct.unpack(byte_order + 'H', ifd_data[:2])[0]
+            gps_offset = None
+
+            for i in range(num_entradas):
+                entry_offset = 2 + i * 12
+                tag = struct.unpack(byte_order + 'H', ifd_data[entry_offset:entry_offset+2])[0]
+                
+                if tag == 0x8825:
+                    gps_offset = struct.unpack(byte_order + 'I', ifd_data[entry_offset+8:entry_offset+12])[0]
+                    break
+
+            if not gps_offset:
+                print("Aviso: Dados GPS não encontrados na imagem.")
+                return None
+
+            gps_data = tiff_header[gps_offset:]
+            num_entradas_gps = struct.unpack(byte_order + 'H', gps_data[:2])[0]
+            
+            latitude = []
+            longitude = []
+            ref_latitude = ''
+            ref_longitude = ''
+
+            for i in range(num_entradas_gps):
+                offset = 2 + i * 12
+                tag_gps = struct.unpack(byte_order + 'H', gps_data[offset:offset+2])[0]
+                tipo_gps = struct.unpack(byte_order + 'H', gps_data[offset+2:offset+4])[0]
+                count_gps = struct.unpack(byte_order + 'I', gps_data[offset+4:offset+8])[0]
+                valor_gps = gps_data[offset+8:offset+12]
+
+                if tag_gps == 0x0001:
+                    if tipo_gps == 2:
+                        ref_latitude = valor_gps[:1].decode('ascii')
+                elif tag_gps == 0x0002:
+                    if tipo_gps == 5:
+                        coord_offset = struct.unpack(byte_order + 'I', valor_gps)[0]
+                        for j in range(3):
+                            num = struct.unpack(byte_order + 'I', tiff_header[coord_offset+j*8:coord_offset+j*8+4])[0]
+                            den = struct.unpack(byte_order + 'I', tiff_header[coord_offset+j*8+4:coord_offset+j*8+8])[0]
+                            latitude.append(round(num/den, 6))
+                elif tag_gps == 0x0003:
+                    if tipo_gps == 2:
+                        ref_longitude = valor_gps[:1].decode('ascii')
+                elif tag_gps == 0x0004:
+                    if tipo_gps == 5:
+                        coord_offset = struct.unpack(byte_order + 'I', valor_gps)[0]
+                        for j in range(3):
+                            num = struct.unpack(byte_order + 'I', tiff_header[coord_offset+j*8:coord_offset+j*8+4])[0]
+                            den = struct.unpack(byte_order + 'I', tiff_header[coord_offset+j*8+4:coord_offset+j*8+8])[0]
+                            longitude.append(round(num/den, 6))
+
+            if not latitude or not longitude:
+                print("Aviso: Coordenadas GPS incompletas.")
+                return None
+
+            return {
+                'latitude': latitude,
+                'longitude': longitude,
+                'ref_latitude': ref_latitude,
+                'ref_longitude': ref_longitude
+            }
+
+    except Exception as e:
+        print(f"Erro ao processar a imagem: {str(e)}")
+        return None
+
+def converter_para_decimal(graus, minutos, segundos, ref):
+    decimal = graus + minutos/60 + segundos/3600
+    if ref in ['S', 'W']:
+        decimal = -decimal
+    return decimal
+
+def abrir_no_mapa(latitude, longitude, ref_lat, ref_lon):
+    try:
+        lat_decimal = converter_para_decimal(latitude[0], latitude[1], latitude[2], ref_lat)
+        lon_decimal = converter_para_decimal(longitude[0], longitude[1], longitude[2], ref_lon)
         
-        print(f'''
-                    *******************************************
-                    Tamanho dos metadados APP1: {app1DataSize}
-                    Numero de metadados: {num_metadados}
-                    Largura da imagem: {largura}
-                    Altura da imagem: {altura}
-                    ''')
+        url = f"https://www.openstreetmap.org/?mlat={lat_decimal}&mlon={lon_decimal}&zoom=15"
+        
+        if sys.platform == 'win32':
+            subprocess.Popen(['start', url], shell=True)
+        elif sys.platform == 'darwin':
+            subprocess.Popen(['open', url])
+        else:
+            subprocess.Popen(['xdg-open', url])
+            
+        return True
+    except Exception as e:
+        print(f"Erro ao abrir mapa: {str(e)}")
+        return False
 
-except PermissionError:
-    print('Erro: Verifique as permissões de leitura do arquivo.')
+#Código principal executado diretamente
+if len(sys.argv) < 2:
+    print("Uso: python3 analise.py <arquivo_imagem>")
+    sys.exit(1)
+ 
+nome_arquivo = sys.argv[1]
+if not os.path.exists(nome_arquivo):
+    print(f"Erro: Arquivo não encontrado - {nome_arquivo}")
+    sys.exit(1)
 
-except FileNotFoundError:
-    print('Erro: Imagem não foi localizada.')
+print(f"\nAnalisando imagem: {nome_arquivo}")
 
-except ValueError as e:
-    print(f'Erro: {e}')
+dados_gps = analisar_imagem(nome_arquivo)
+if not dados_gps:
+    print("Não foi possível extrair dados GPS da imagem.")
+    sys.exit(1)
 
-# except IndexError:
-#     print(f'O indice referenciado para a lista de metadados é superior ao range de metadados. Execução interrompida.')
-#     print(f'Metadados GPS: {data_gps}')
+print("\nDados GPS encontrados:")
+print(f"Latitude: {dados_gps['latitude']} {dados_gps['ref_latitude']}")
+print(f"Longitude: {dados_gps['longitude']} {dados_gps['ref_longitude']}")
+
+print("\nAbrindo no OpenStreetMap...")
+if abrir_no_mapa(dados_gps['latitude'], dados_gps['longitude'], 
+                 dados_gps['ref_latitude'], dados_gps['ref_longitude']):
+    print("Mapa aberto com sucesso!")
+else:
+    print("Falha ao abrir o mapa.")
