@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 
-import os
-import sys
-import subprocess
-import struct
+import os, sys, subprocess, struct
 
 def analisar_imagem(nome_arquivo):
     try:
