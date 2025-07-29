@@ -1,7 +1,9 @@
+#!/usr/bin/env python3
+
 import socket, threading
 
 PORT = 50000
-SERVER = 'localhost'
+SERVER = ''
 
 def trataUsuario():
     nMsg = 1
