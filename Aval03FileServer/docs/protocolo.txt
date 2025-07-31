@@ -1,0 +1,7 @@
+#Este documento tem a finalidade de definir os protocolos de comuncação entre CLIENT e SERVER na atividade 03
+
+##Orientações para execução:
+
+>>>Inicialmente o arquivo 'server.py' este deverá criar um socket e estará escutando em localhost:11443
+
+a comunicação ocorrerá da seguinte maneira:
