@@ -2,8 +2,8 @@
 
 import socket, threading
 
-SERVER = ''
-PORT = 50000
+SERVER = 'localhost'
+PORT = 20000
 allClients = []
 
 def trataCliente(sockCon, origem):
@@ -13,6 +13,8 @@ def trataCliente(sockCon, origem):
         msg = sockCon.recv(4096)
         print (f"Recebi de {origem} -> {msg.decode()}")
         sockCon.send(msg)
+        break
+
 
 sockServer = socket.socket (socket.AF_INET, socket.SOCK_STREAM)
 sockServer.bind((SERVER, PORT))
