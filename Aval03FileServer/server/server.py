@@ -1,9 +1,10 @@
-#!/usr/bin/env python3
+#! /usr/bin/env python3
 
 ##########################################>>> IMPORTANDO BIBLIOTECAS E ARQUIVOS ADICIONAIs <<<##########################################
 import socket, threading, os, hashlib, glob
 
-#######################################################>>> SESSÃO DE REDE/SOCKET <<<#######################################################
+
+#######################################################>>> SESSÃO DE REDE/SOCKET e DIRETORIOS <<<#######################################################
 PORT = 20000
 SERVER = 'localhost'
 
@@ -15,39 +16,43 @@ MAX_CONNECTIONS = 5
 if not os.path.exists(PASTA_SERVIDOR):
     os.makedirs(PASTA_SERVIDOR)
 
-    diretorio = os.path.dirname(os.path.abspath(__file__))
-    arq_list = os.listdir(os.path.join(diretorio, 'arquivos'))
-    arq_list = ("\n".join(arq_list))
+
+
 
 
 ########################################>>> DEFININDO FUNÇÕES DO SERVIDOR/TRATAMENTO DE CLIENTES <<<########################################
 def verificar_caminho_seguro(caminho):
-    # Verifica se o caminho está dentro da pasta permitida
+    #Verifica se o caminho está dentro da pasta permitida
     caminho_real = os.path.realpath(caminho)
     pasta_real = os.path.realpath(PASTA_SERVIDOR)
     return os.path.commonpath([caminho_real, pasta_real]) == pasta_real
 
 def listar_arquivos():
+
     try:
         arquivos = []
+
         for arq in os.listdir(PASTA_SERVIDOR):
             caminho = os.path.join(PASTA_SERVIDOR, arq)
+            
             if os.path.isfile(caminho):
                 tamanho = os.path.getsize(caminho)
                 arquivos.append(f"{arq};{tamanho}")
-        return "SUCESS|" + "\n".join(arquivos)
+
+        return "SUCESS&" + "\n".join(arquivos)
+    
     except Exception as e:
-        return f"ERRO|{str(e)}"
+        return f"ERRO&{str(e)}"
 
 def enviar_arquivo(nome_arquivo, sock, posicao=0):
     caminho = os.path.join(PASTA_SERVIDOR, nome_arquivo)
     
     if not verificar_caminho_seguro(caminho) or not os.path.isfile(caminho):
-        sock.send("ERRO|Arquivo não encontrado ou acesso negado".encode("utf-8"))
+        sock.send("ERRO&Arquivo não encontrado ou acesso negado".encode("utf-8"))
         return
     
     tamanho = os.path.getsize(caminho)
-    sock.send(f"SUCESS|{tamanho}".encode("utf-8"))
+    sock.send(f"SUCESS&{tamanho}".encode("utf-8"))
     
     with open(caminho, 'rb') as f:
         if posicao > 0:
@@ -62,7 +67,7 @@ def calcular_hash(nome_arquivo, posicao):
     caminho = os.path.join(PASTA_SERVIDOR, nome_arquivo)
     
     if not verificar_caminho_seguro(caminho) or not os.path.isfile(caminho):
-        return "ERRO|Arquivo não encontrado ou acesso negado"
+        return "ERRO&Arquivo não encontrado ou acesso negado"
     
     md5 = hashlib.md5()
     with open(caminho, 'rb') as f:
@@ -72,13 +77,13 @@ def calcular_hash(nome_arquivo, posicao):
             dados = f.read()
         md5.update(dados)
     
-    return f"SUCESS|{md5.hexdigest()}"
+    return f"SUCESS&{md5.hexdigest()}"
 
 def continuar_download(nome_arquivo, posicao, hash_cliente):
     caminho = os.path.join(PASTA_SERVIDOR, nome_arquivo)
     
     if not verificar_caminho_seguro(caminho) or not os.path.isfile(caminho):
-        return "ERRO|Arquivo não encontrado ou acesso negado"
+        return "ERRO&Arquivo não encontrado ou acesso negado"
     
     # Verificar hash da parte existente
     md5 = hashlib.md5()
@@ -87,10 +92,10 @@ def continuar_download(nome_arquivo, posicao, hash_cliente):
         md5.update(dados)
     
     if md5.hexdigest() != hash_cliente:
-        return "ERRO|Hash não confere - arquivo corrompido ou modificado"
+        return "ERRO&Hash não confere - arquivo corrompido ou modificado"
     
     tamanho_total = os.path.getsize(caminho)
-    return f"SUCESS|{tamanho_total}"
+    return f"SUCESS&{tamanho_total}"
 
 def listar_arquivos_mascara(mascara):
     try:
@@ -103,25 +108,39 @@ def listar_arquivos_mascara(mascara):
                 tamanho = os.path.getsize(caminho)
                 arquivos.append(f"{nome};{tamanho}")
         
-        return "SUCESS|" + "\n".join(arquivos)
+        return "SUCESS&" + "\n".join(arquivos)
     except Exception as e:
-        return f"ERRO|{str(e)}"
+        return f"ERRO&{str(e)}"
 
+
+
+#######################################################>>> TRATANDO SOLICITAÇÕES DO CLIENTE <<<#######################################################
 def tratar_cliente(sock, endereco):
     print(f"Conexão estabelecida com {endereco}")
+
+    '''Aqui eu recebo os primeiros 4096 bytes para identificar o comando e depois vou tratando conforme o comando recebido.
+        Se o comando for inválido, envio uma mensagem de erro e continuo aguardando novos comandos.'''
     
     try:
         while True:
             dados = sock.recv(4096).decode("utf-8").strip()
+
+            print(f"Dados recebidos: {dados}")
+
             if not dados:
+                print(f"ERRO: Requisição vazia, encerrando conexão com {endereco}")
+                sock.send(("ERRO&Requisição inválida").encode("utf-8"))
+                sock.close()
                 break
                 
-            partes = dados.split()
+            partes = dados.split("&")
             comando = partes[0].upper()
             
             if comando == "LIST":
                 resposta = listar_arquivos()
                 sock.send(resposta.encode("utf-8"))
+                sock.close()
+                break
                 
             elif comando == "DOWN" and len(partes) > 1:
                 nome_arquivo = partes[1]
@@ -134,7 +153,7 @@ def tratar_cliente(sock, endereco):
                 resposta = continuar_download(nome_arquivo, posicao, hash_cliente)
                 sock.send(resposta.encode("utf-8"))
                 
-                # Se o hash conferir, enviar o restante do arquivo
+                #Se o hash conferir, enviar o restante do arquivo
                 if resposta.startswith("SUCESS"):
                     enviar_arquivo(nome_arquivo, sock, posicao)
                     
@@ -143,7 +162,7 @@ def tratar_cliente(sock, endereco):
                 resposta = listar_arquivos_mascara(mascara)
                 sock.send(resposta.encode("utf-8"))
                 
-                # Esperar confirmação para cada arquivo
+                #Esperar confirmação para cada arquivo
                 while True:
                     confirmacao = sock.recv(4096).decode("utf-8").strip()
                     if confirmacao == "CONFIRM":
@@ -163,7 +182,7 @@ def tratar_cliente(sock, endereco):
                 break
                 
             else:
-                sock.send("ERRO|Comando inválido".encode("utf-8"))
+                sock.send("ERRO&Comando inválido".encode("utf-8"))
                 
     except Exception as e:
         print(f"Erro com cliente {endereco}: {str(e)}")

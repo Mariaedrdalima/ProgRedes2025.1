@@ -12,7 +12,7 @@ PASTA_CLIENTE = os.path.join(diretorio,'downloads')
 
 
 ########################################>>> DEFININDO FUNÇÕES DO CLIENTE/COMUNICAÇÃO COM O SERVER <<<########################################
-def showMenu():
+def exibe_menu():
     print("""
         Escolha uma opção:
         1 - Listar arquivos do servidor
@@ -42,13 +42,17 @@ def enviar_comando(comando):
 
 def listar_arquivos():
     resposta = enviar_comando("LIST")
+
     if resposta.startswith("SUCESS"):
-        arquivos = resposta.split("|")[1].split("\n")
+
+        arquivos = resposta.split("&")[1].split("\n")
         print("\n=== Arquivos no servidor ===")
+        
         for arq in arquivos:
             if arq:  # Ignorar linhas vazias
                 nome, tamanho = arq.split(";")
                 print(f"{nome} - {tamanho} bytes")
+
         print("============================")
     else:
         print("\nErro ao listar arquivos:", resposta)
@@ -56,10 +60,10 @@ def listar_arquivos():
 
 def download_arquivo():
     nome_arquivo = input("\nDigite o nome do arquivo para download: ").strip()
-    resposta = enviar_comando(f"DOWN {nome_arquivo}")
+    resposta = enviar_comando(f"DOWN&{nome_arquivo}")
     
     if resposta.startswith("SUCESS"):
-        tamanho = int(resposta.split("|")[1])
+        tamanho = int(resposta.split("&")[1])
         caminho_local = os.path.join(PASTA_CLIENTE, nome_arquivo)
         
         # Verificar se arquivo já existe
@@ -81,11 +85,8 @@ def download_arquivo():
         
         print(f"\nDownload concluído: {nome_arquivo} ({recebido} bytes)")
     else:
-        print("\nErro no download:", resposta)
-
-
-
-
+       
+        print("\nErro no download:", resposta.split("&")[1])
 
 def continuar_download():
     nome_arquivo = input("\nDigite o nome do arquivo para continuar download: ").strip()
@@ -103,10 +104,10 @@ def continuar_download():
         md5.update(f.read())
     hash_atual = md5.hexdigest()
     
-    resposta = enviar_comando(f"CONT {nome_arquivo} {tamanho_atual} {hash_atual}")
+    resposta = enviar_comando(f"CONT&{nome_arquivo}&{tamanho_atual}&{hash_atual}")
     
     if resposta.startswith("SUCESS"):
-        tamanho_total = int(resposta.split("|")[1])
+        tamanho_total = int(resposta.split("&")[1])
         with open(caminho_local, 'ab') as f:
             recebido = tamanho_atual
             while recebido < tamanho_total:
@@ -118,7 +119,7 @@ def continuar_download():
         
         print(f"\nDownload continuado: {nome_arquivo} ({recebido} bytes no total)")
     else:
-        print("\nErro ao continuar download:", resposta)
+        print("\nErro ao continuar download:", resposta.split("&")[1])
 
 
 
@@ -126,10 +127,11 @@ def continuar_download():
 
 def download_multiplo():
     mascara = input("\nDigite a máscara para download (ex: *.txt): ").strip()
-    resposta = enviar_comando(f"MULTI {mascara}")
+    resposta = enviar_comando(f"MULTI&{mascara}")
     
     if resposta.startswith("SUCESS"):
-        arquivos = resposta.split("|")[1].split("\n")
+        arquivos = resposta.split("&")[1].split("\n")
+
         for arq_info in arquivos:
             if not arq_info:
                 continue
@@ -146,12 +148,12 @@ def download_multiplo():
                     continue
             
             # Confirmar download
-            confirmar = input(f"Baixar {nome_arquivo} ({tamanho} bytes)? (S/N): ").upper()
+            confirmar = input(f"Baixar&{nome_arquivo}&({tamanho} bytes)? (S/N): ").upper()
             if confirmar != 'S':
                 continue
             
             # Enviar confirmação
-            sockServer.send("CONFIRM".encode("utf-8"))
+            sockServer.send("CONFIRM&".encode("utf-8"))
             
             # Receber o arquivo
             with open(caminho_local, 'wb') as f:
@@ -159,13 +161,14 @@ def download_multiplo():
                 while recebido < tamanho:
                     dados = sockServer.recv(4096)
                     if not dados:
+                        print(f"\nErro ao receber {nome_arquivo}. Download interrompido.")
                         break
                     f.write(dados)
                     recebido += len(dados)
             
             print(f"Download concluído: {nome_arquivo}")
     else:
-        print("\nErro no download múltiplo:", resposta)
+        print("\nErro no download múltiplo:", resposta.split("&")[1])
 
 
 
@@ -181,13 +184,13 @@ def obter_hash():
         print("Posição inválida!")
         return
     
-    resposta = enviar_comando(f"HASH {nome_arquivo} {posicao}")
+    resposta = enviar_comando(f"HASH&{nome_arquivo} {posicao}")
     
     if resposta.startswith("SUCESS"):
-        hash_value = resposta.split("|")[1]
+        hash_value = resposta.split("&")[1]
         print(f"\nHash MD5 do arquivo {nome_arquivo} (até posição {posicao}): {hash_value}")
     else:
-        print("\nErro ao obter hash:", resposta)
+        print("\nErro ao obter hash:", resposta.split("&")[1])
 
 #########################################################>>> INICIANDO CLIENTE <<<#########################################################
 global sockServer
@@ -198,7 +201,7 @@ while True:
         sockServer.connect((SERVER, PORT))
      
         while True:
-            escolha = showMenu()
+            escolha = exibe_menu()
                 
             if escolha == 1:
                 listar_arquivos()
