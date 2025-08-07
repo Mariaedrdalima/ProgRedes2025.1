@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 ##########################################>>> IMPORTANDO BIBLIOTECAS E ARQUIVOS ADICIONAIs <<<##########################################
-import socket, threading, os, hashlib, glob
+import socket, threading, os, hashlib, glob, sys
 
 #######################################################>>> SESSÃO DE REDE/SOCKET <<<#######################################################
 PORT = 20000
@@ -26,7 +26,8 @@ def exibe_menu():
     
     try:
         escolha = int(input())
-        return escolha
+        return escolha 
+    
     except ValueError:
         print("\nEntrada inválida! Digite um número.")
         return 0
@@ -171,53 +172,6 @@ def download_multiplo():
     else:
         print("\nErro no download múltiplo:", resposta.split("&")[1])
 
-# def download_multiplo():
-#     mascara = input("\nDigite a máscara para download (ex: *.txt): ").strip()
-#     resposta = enviar_comando(f"MULTI&{mascara}")
-    
-#     if resposta.startswith("SUCESS"):
-#         arquivos = resposta.split("&")[1].split("\n")
-
-#         for arq_info in arquivos:
-#             if not arq_info:
-#                 continue
-                
-#             nome_arquivo, tamanho = arq_info.split(";")
-#             tamanho = int(tamanho)
-#             caminho_local = os.path.join(PASTA_CLIENTE, nome_arquivo)
-            
-#             # Verificar se arquivo já existe
-#             if os.path.exists(caminho_local):
-#                 sobrescrever = input(f"Arquivo {nome_arquivo} já existe. Sobrescrever? (S/N): ").upper()
-#                 if sobrescrever != 'S':
-#                     print(f"Pulando {nome_arquivo}...")
-#                     continue
-            
-#             # Confirmar download
-#             confirmar = input(f"Baixar {nome_arquivo} ({tamanho} bytes)? (S/N): ").upper()
-#             if confirmar != 'S':
-#                 continue
-            
-#             # Enviar confirmação
-#             sockServer.send("CONFIRM&".encode("utf-8"))
-            
-#             # Receber o arquivo
-#             with open(caminho_local, 'wb') as f:
-#                 recebido = 0
-
-#                 while recebido < tamanho:
-#                     dados = sockServer.recv(4096)
-#                     if not dados:
-#                         print(f"\nErro ao receber {nome_arquivo}. Download interrompido.")
-#                         break
-#                     f.write(dados)
-#                     recebido += len(dados)
-            
-#             print(f"Download concluído: {nome_arquivo}")
-#     else:
-#         print("\nErro no download múltiplo:", resposta.split("&")[1])
-
-
 
 
 
@@ -240,16 +194,70 @@ def obter_hash():
         print("\nErro ao obter hash:", resposta.split("&")[1])
 
 #########################################################>>> INICIANDO CLIENTE <<<#########################################################
-global sockServer
-    
+
+# while True:
+#     try:
+#             sockServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+#             sockServer.connect((SERVER, PORT))
+
+#             while True:
+#                 escolha = exibe_menu()
+                    
+#                 if escolha == 1:
+#                     listar_arquivos()
+
+#                 elif escolha == 2:
+#                     download_arquivo()
+
+#                 elif escolha == 3:
+#                     continuar_download()
+                    
+#                 elif escolha == 4:
+#                     download_multiplo()
+                    
+#                 elif escolha == 5:
+#                     obter_hash()
+                    
+#                 elif escolha == 6:
+#                     enviar_comando("EXIT")
+#                     print("\nSaindo...")
+#                     sockServer.close()
+#                     break
+
+#                 else:
+#                     print("\nOpção inválida!")
+#                 sockServer.close()
+#                 break
+
+#     except ConnectionRefusedError:
+#             print("\nNão foi possível conectar ao servidor. Verifique se o servidor está rodando.")
+#             break
+            
+#     except KeyboardInterrupt:
+#             print("\nSaindo...")
+#             sockServer.close()
+#             break
+            
+#     except Exception as e:
+#             print(f"\nErro: {e}")
+#             sockServer.close()
+
+# ... (código anterior)
+
+#########################################################>>> INICIANDO CLIENTE <<<#########################################################
+
+# O loop 'while True' agora existe fora do bloco 'try'
 while True:
     try:
-        sockServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+        # Tenta conectar UMA VEZ no início
+        sockServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sockServer.connect((SERVER, PORT))
-     
+        print("\nConexão com o servidor estabelecida.")
+
+        # Mantém a conexão ativa até o cliente escolher 'sair'
         while True:
             escolha = exibe_menu()
-                
+
             if escolha == 1:
                 listar_arquivos()
             elif escolha == 2:
@@ -263,25 +271,22 @@ while True:
             elif escolha == 6:
                 enviar_comando("EXIT")
                 print("\nSaindo...")
+                sockServer.close()
+                sys.exit(0)
                 break
-
             else:
                 print("\nOpção inválida!")
-             
-                # Reconectar para próxima operação
-            sockServer.close()
-            break
-                
+
+    # Tratamento de erros de conexão
     except ConnectionRefusedError:
         print("\nNão foi possível conectar ao servidor. Verifique se o servidor está rodando.")
         break
     except KeyboardInterrupt:
         print("\nSaindo...")
-        if 'sockServer' in globals():
-            sockServer.close()
+        sockServer.close()
         break
+
     except Exception as e:
-        print(f"\nErro: {e}")
-        if 'sockServer' in globals():
-            sockServer.close()
+        print(f"\nErro inesperado: {e}")
+        sockServer.close()
         break

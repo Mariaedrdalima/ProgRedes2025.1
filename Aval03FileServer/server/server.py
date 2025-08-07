@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 ##########################################>>> IMPORTANDO BIBLIOTECAS E ARQUIVOS ADICIONAIs <<<##########################################
-import socket, threading, os, hashlib, glob
+import socket, threading, os, hashlib, glob, sys
 
 
 #######################################################>>> SESSÃO DE REDE/SOCKET e DIRETORIOS <<<#######################################################
@@ -125,13 +125,11 @@ def tratar_cliente(sock, endereco):
         while True:
             dados = sock.recv(4096).decode("utf-8").strip()
 
-            print(f"Dados recebidos: {dados}")
+            print(f"Dados recebidos do cliente {endereco}: {dados}")
 
             if not dados:
                 print(f"ERRO: Requisição vazia, encerrando conexão com {endereco}")
                 sock.send(("ERRO&Requisição inválida").encode("utf-8"))
-                sock.close()
-                break
                 
             partes = dados.split("&")
             comando = partes[0].upper()
@@ -139,12 +137,11 @@ def tratar_cliente(sock, endereco):
             if comando == "LIST":
                 resposta = listar_arquivos()
                 sock.send(resposta.encode("utf-8"))
-                sock.close()
-                break
                 
             elif comando == "DOWN" and len(partes) > 1:
                 nome_arquivo = partes[1]
                 enviar_arquivo(nome_arquivo, sock)
+                
                 
             elif comando == "CONT" and len(partes) > 3:
                 nome_arquivo = partes[1]
@@ -174,40 +171,29 @@ def tratar_cliente(sock, endereco):
                         if pronto != "PRONTO":
                             break
                     else:
-                        break
+                        print(f"ERRO: Comando inválido recebido: {confirmacao}")
+                        sock.send("ERRO&Comando inválido".encode("utf-8"))                        
+                break
 
-            # elif comando == "MULTI" and len(partes) > 1:
-            #     mascara = partes[1]
-            #     resposta = listar_arquivos_mascara(mascara)
-            #     sock.send(resposta.encode("utf-8"))
-                
-            #     #Esperar confirmação para cada arquivo
-            #     while True:
-            #         confirmacao = sock.recv(4096).decode("utf-8").strip()
-            #         if confirmacao == "CONFIRM":
-            #             nome_arquivo = sock.recv(4096).decode("utf-8").strip()
-            #             enviar_arquivo(nome_arquivo, sock)
-            #         else:
-            #             break
-                        
             elif comando == "HASH" and len(partes) > 2:
                 nome_arquivo = partes[1]
                 posicao = int(partes[2])
                 resposta = calcular_hash(nome_arquivo, posicao)
                 sock.send(resposta.encode("utf-8"))
                 
+                
             elif comando == "EXIT":
                 print(f"Cliente {endereco} solicitou encerramento.")
+                print(f"Conexão com {endereco} encerrada.")
+                sock.close()
                 break
+                
                 
             else:
                 sock.send("ERRO&Comando inválido".encode("utf-8"))
                 
     except Exception as e:
         print(f"Erro com cliente {endereco}: {str(e)}")
-    finally:
-        sock.close()
-        print(f"Conexão com {endereco} encerrada.")
 
 #########################################################>>> INICIANDO SERVIDOR <<<#########################################################
 sock_servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -222,5 +208,4 @@ try:
         threading.Thread(target=tratar_cliente, args=(sock_cliente, endereco)).start()
 except KeyboardInterrupt:
     print("\nServidor encerrado.")
-finally:
     sock_servidor.close()
