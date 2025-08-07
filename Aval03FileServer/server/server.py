@@ -86,10 +86,10 @@ def continuar_download(nome_arquivo, posicao, hash_cliente):
         return "ERRO&Arquivo não encontrado ou acesso negado"
     
     # Verificar hash da parte existente
-    md5 = hashlib.md5()
-    with open(caminho, 'rb') as f:
+    md5 = hashlib.md5() #abre o arquivo no modo leitura binária
+    with open(caminho, 'rb') as f: 
         dados = f.read(posicao)
-        md5.update(dados)
+        md5.update(dados) 
     
     if md5.hexdigest() != hash_cliente:
         return "ERRO&Hash não confere - arquivo corrompido ou modificado"
@@ -123,7 +123,8 @@ def tratar_cliente(sock, endereco):
     
     try:
         while True:
-            dados = sock.recv(4096).decode("utf-8").strip()
+            #recebe os primeiros 8192 bytes do cliente paa receber o comando, qualquer valor acima disso é imcompativel com o cliente que eu desenvolvi
+            dados = sock.recv(8192).decode("utf-8").strip()
 
             print(f"Dados recebidos do cliente {endereco}: {dados}")
 
@@ -135,11 +136,11 @@ def tratar_cliente(sock, endereco):
             comando = partes[0].upper()
             
             if comando == "LIST":
-                resposta = listar_arquivos()
+                resposta = listar_arquivos() #a resposta recebe a lista criada na função listar_arquivos, que concatena "arquivo;Tamanho" de cada arquivo
                 sock.send(resposta.encode("utf-8"))
                 
             elif comando == "DOWN" and len(partes) > 1:
-                nome_arquivo = partes[1]
+                nome_arquivo = partes[1] #pega somente o nome do arquivo após o '&'
                 enviar_arquivo(nome_arquivo, sock)
                 
                 
@@ -159,17 +160,18 @@ def tratar_cliente(sock, endereco):
                 resposta = listar_arquivos_mascara(mascara)
                 sock.send(resposta.encode("utf-8"))
                 
-                # Esperar solicitações de download individuais
+                #Esperar solicitações de download individuais
                 while True:
-                    confirmacao = sock.recv(4096).decode("utf-8").strip()
+                    confirmacao = sock.recv(4096).decode("utf-8").strip() #recebe o comando de download individual do cliente
                     if confirmacao.startswith("DOWNLOADMULTI"):
                         nome_arquivo = confirmacao.split("&")[1]
-                        enviar_arquivo(nome_arquivo, sock)
+                        enviar_arquivo(nome_arquivo, sock) #usa a mesma função de envio de arquivo (0o0)
                         
                         # Esperar confirmação de que o cliente está pronto para o próximo
                         pronto = sock.recv(4096).decode("utf-8").strip()
                         if pronto != "PRONTO":
                             break
+                        
                     else:
                         print(f"ERRO: Comando inválido recebido: {confirmacao}")
                         sock.send("ERRO&Comando inválido".encode("utf-8"))                        
@@ -196,16 +198,17 @@ def tratar_cliente(sock, endereco):
         print(f"Erro com cliente {endereco}: {str(e)}")
 
 #########################################################>>> INICIANDO SERVIDOR <<<#########################################################
-sock_servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock_servidor.bind((SERVER, PORT))
-sock_servidor.listen(MAX_CONNECTIONS)
+sock_servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Cria o socket do servidor
+sock_servidor.bind((SERVER, PORT)) #Associa o socket ao endereço e porta
+sock_servidor.listen(MAX_CONNECTIONS) #Fica escutando por conexões de clientes
 
 print(f"Servidor iniciado em {SERVER}:{PORT}. Aguardando conexões...")
 
 try:
     while True:
-        sock_cliente, endereco = sock_servidor.accept()
-        threading.Thread(target=tratar_cliente, args=(sock_cliente, endereco)).start()
-except KeyboardInterrupt:
+        sock_cliente, endereco = sock_servidor.accept() #Aceita a conexão de um cliente
+        threading.Thread(target=tratar_cliente, args=(sock_cliente, endereco)).start() #Cria uma nova thread para tratar o cliente
+
+except KeyboardInterrupt: #aqui não está funcionando bem
     print("\nServidor encerrado.")
     sock_servidor.close()

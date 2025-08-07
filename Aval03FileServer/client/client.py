@@ -12,6 +12,7 @@ PASTA_CLIENTE = os.path.join(diretorio,'downloads')
 
 
 ########################################>>> DEFININDO FUNÇÕES DO CLIENTE/COMUNICAÇÃO COM O SERVER <<<########################################
+#função para exibir o menu com um input para o cliente selecionar o número da opção
 def exibe_menu():
     print("""
         Escolha uma opção:
@@ -34,13 +35,17 @@ def exibe_menu():
 
 def enviar_comando(comando):
     try:
-        sockServer.send(comando.encode("utf-8"))
-        resposta = sockServer.recv(4096).decode("utf-8")
+        sockServer.send(comando.encode("utf-8")) #envia o comando para o servidor
+        resposta = sockServer.recv(4096).decode("utf-8") #recebe a resposta do servidor
         return resposta
+    
     except Exception as e:
         print(f"\nErro na comunicação: {e}")
         return "ERRO"
 
+
+
+#função para listar arquivos do servidor
 def listar_arquivos():
     resposta = enviar_comando("LIST")
 
@@ -51,14 +56,16 @@ def listar_arquivos():
         
         for arq in arquivos:
             if arq:  # Ignorar linhas vazias
-                nome, tamanho = arq.split(";")
-                print(f"{nome} - {tamanho} bytes")
+                nome, tamanho = arq.split(";") #separa o nome do arquivo e o tamanho
+                print(f"{nome} - {tamanho} bytes") #exibe o nome e o tamanho do arquivo
 
         print("============================")
     else:
         print("\nErro ao listar arquivos:", resposta)
 
 
+
+#função para download de arquivo
 def download_arquivo():
     nome_arquivo = input("\nDigite o nome do arquivo para download: ").strip()
     resposta = enviar_comando(f"DOWN&{nome_arquivo}")
@@ -68,27 +75,31 @@ def download_arquivo():
         caminho_local = os.path.join(PASTA_CLIENTE, nome_arquivo)
         
         # Verificar se arquivo já existe
-        if os.path.exists(caminho_local):
+        if os.path.exists(caminho_local): #verifica se o arquivo já existe na pasta de downloads
             sobrescrever = input(f"Arquivo {nome_arquivo} já existe. Sobrescrever? (S/N): ").upper()
             if sobrescrever != 'S':
                 print("Download cancelado.")
                 return
         
         # Receber o arquivo
-        with open(caminho_local, 'wb') as f:
+        with open(caminho_local, 'wb') as f: #abre o arquivo no modo escrita binária
             recebido = 0
-            while recebido < tamanho:
+            while recebido < tamanho: #enquanto o total recebido for menor que o tamanho do arquivo
                 dados = sockServer.recv(4096)
-                if not dados:
+                if not dados: 
                     break
                 f.write(dados)
-                recebido += len(dados)
+                recebido += len(dados) #atualiza o total recebido
         
         print(f"\nDownload concluído: {nome_arquivo} ({recebido} bytes)")
     else:
        
         print("\nErro no download:", resposta.split("&")[1])
 
+
+
+
+#função para continuar download interrompido
 def continuar_download():
     nome_arquivo = input("\nDigite o nome do arquivo para continuar download: ").strip()
     caminho_local = os.path.join(PASTA_CLIENTE, nome_arquivo)
@@ -124,24 +135,27 @@ def continuar_download():
 
 
 
+#função para download de múltiplos arquivos a partir da extensão (máscara)
 def download_multiplo():
     mascara = input("\nDigite a máscara para download (ex: *.txt): ").strip()
     resposta = enviar_comando(f"MULTI&{mascara}")
     
-    if resposta.startswith("SUCESS"):
-        arquivos = resposta.split("&")[1].split("\n")
+    if resposta.startswith("SUCESS"): 
+        arquivos = resposta.split("&")[1].split("\n") #pega a lista de arquivos retornada pelo servidor
 
-        for arq_info in arquivos:
-            if not arq_info:
+        for arq_info in arquivos: #para cada arquivo na lista ele vai ver se já existe, perguntar se quer baixar novamente, baixar e salvar, dizer que está pronto para o próximo
+
+            if not arq_info: #Em alguns testes, a lista tinha espaços vazios, então ignora esses casos (não cosnegui descobrir o motivo ainda)
                 continue
                 
-            nome_arquivo, tamanho = arq_info.split(";")
+            nome_arquivo, tamanho = arq_info.split(";") #separa o nome do arquivo e o tamanho
             tamanho = int(tamanho)
             caminho_local = os.path.join(PASTA_CLIENTE, nome_arquivo)
             
             # Verificar se arquivo já existe
             if os.path.exists(caminho_local):
                 sobrescrever = input(f"Arquivo {nome_arquivo} já existe. Sobrescrever? (S/N): ").upper()
+                
                 if sobrescrever != 'S':
                     print(f"Pulando {nome_arquivo}...")
                     continue
@@ -193,68 +207,13 @@ def obter_hash():
     else:
         print("\nErro ao obter hash:", resposta.split("&")[1])
 
-#########################################################>>> INICIANDO CLIENTE <<<#########################################################
-
-# while True:
-#     try:
-#             sockServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
-#             sockServer.connect((SERVER, PORT))
-
-#             while True:
-#                 escolha = exibe_menu()
-                    
-#                 if escolha == 1:
-#                     listar_arquivos()
-
-#                 elif escolha == 2:
-#                     download_arquivo()
-
-#                 elif escolha == 3:
-#                     continuar_download()
-                    
-#                 elif escolha == 4:
-#                     download_multiplo()
-                    
-#                 elif escolha == 5:
-#                     obter_hash()
-                    
-#                 elif escolha == 6:
-#                     enviar_comando("EXIT")
-#                     print("\nSaindo...")
-#                     sockServer.close()
-#                     break
-
-#                 else:
-#                     print("\nOpção inválida!")
-#                 sockServer.close()
-#                 break
-
-#     except ConnectionRefusedError:
-#             print("\nNão foi possível conectar ao servidor. Verifique se o servidor está rodando.")
-#             break
-            
-#     except KeyboardInterrupt:
-#             print("\nSaindo...")
-#             sockServer.close()
-#             break
-            
-#     except Exception as e:
-#             print(f"\nErro: {e}")
-#             sockServer.close()
-
-# ... (código anterior)
-
-#########################################################>>> INICIANDO CLIENTE <<<#########################################################
-
-# O loop 'while True' agora existe fora do bloco 'try'
 while True:
     try:
-        # Tenta conectar UMA VEZ no início
         sockServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sockServer.connect((SERVER, PORT))
         print("\nConexão com o servidor estabelecida.")
 
-        # Mantém a conexão ativa até o cliente escolher 'sair'
+        #A conexão fica ativada até o cliente escolher a opção 6 de 'sair'
         while True:
             escolha = exibe_menu()
 
@@ -277,7 +236,7 @@ while True:
             else:
                 print("\nOpção inválida!")
 
-    # Tratamento de erros de conexão
+    #Tratamento de erros de conexão
     except ConnectionRefusedError:
         print("\nNão foi possível conectar ao servidor. Verifique se o servidor está rodando.")
         break
