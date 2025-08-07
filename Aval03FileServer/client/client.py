@@ -123,8 +123,6 @@ def continuar_download():
 
 
 
-
-
 def download_multiplo():
     mascara = input("\nDigite a máscara para download (ex: *.txt): ").strip()
     resposta = enviar_comando(f"MULTI&{mascara}")
@@ -148,12 +146,12 @@ def download_multiplo():
                     continue
             
             # Confirmar download
-            confirmar = input(f"Baixar&{nome_arquivo}&({tamanho} bytes)? (S/N): ").upper()
+            confirmar = input(f"Baixar {nome_arquivo} ({tamanho} bytes)? (S/N): ").upper()
             if confirmar != 'S':
                 continue
             
-            # Enviar confirmação
-            sockServer.send("CONFIRM&".encode("utf-8"))
+            # Enviar confirmação para o servidor
+            sockServer.send(f"DOWNLOADMULTI&{nome_arquivo}".encode("utf-8"))
             
             # Receber o arquivo
             with open(caminho_local, 'wb') as f:
@@ -167,8 +165,57 @@ def download_multiplo():
                     recebido += len(dados)
             
             print(f"Download concluído: {nome_arquivo}")
+            
+            # Esperar confirmação do servidor para próximo arquivo
+            sockServer.send("PRONTO".encode("utf-8"))
     else:
         print("\nErro no download múltiplo:", resposta.split("&")[1])
+
+# def download_multiplo():
+#     mascara = input("\nDigite a máscara para download (ex: *.txt): ").strip()
+#     resposta = enviar_comando(f"MULTI&{mascara}")
+    
+#     if resposta.startswith("SUCESS"):
+#         arquivos = resposta.split("&")[1].split("\n")
+
+#         for arq_info in arquivos:
+#             if not arq_info:
+#                 continue
+                
+#             nome_arquivo, tamanho = arq_info.split(";")
+#             tamanho = int(tamanho)
+#             caminho_local = os.path.join(PASTA_CLIENTE, nome_arquivo)
+            
+#             # Verificar se arquivo já existe
+#             if os.path.exists(caminho_local):
+#                 sobrescrever = input(f"Arquivo {nome_arquivo} já existe. Sobrescrever? (S/N): ").upper()
+#                 if sobrescrever != 'S':
+#                     print(f"Pulando {nome_arquivo}...")
+#                     continue
+            
+#             # Confirmar download
+#             confirmar = input(f"Baixar {nome_arquivo} ({tamanho} bytes)? (S/N): ").upper()
+#             if confirmar != 'S':
+#                 continue
+            
+#             # Enviar confirmação
+#             sockServer.send("CONFIRM&".encode("utf-8"))
+            
+#             # Receber o arquivo
+#             with open(caminho_local, 'wb') as f:
+#                 recebido = 0
+
+#                 while recebido < tamanho:
+#                     dados = sockServer.recv(4096)
+#                     if not dados:
+#                         print(f"\nErro ao receber {nome_arquivo}. Download interrompido.")
+#                         break
+#                     f.write(dados)
+#                     recebido += len(dados)
+            
+#             print(f"Download concluído: {nome_arquivo}")
+#     else:
+#         print("\nErro no download múltiplo:", resposta.split("&")[1])
 
 
 
@@ -184,7 +231,7 @@ def obter_hash():
         print("Posição inválida!")
         return
     
-    resposta = enviar_comando(f"HASH&{nome_arquivo} {posicao}")
+    resposta = enviar_comando(f"HASH&{nome_arquivo}&{posicao}")
     
     if resposta.startswith("SUCESS"):
         hash_value = resposta.split("&")[1]

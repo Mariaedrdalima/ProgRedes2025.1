@@ -156,20 +156,39 @@ def tratar_cliente(sock, endereco):
                 #Se o hash conferir, enviar o restante do arquivo
                 if resposta.startswith("SUCESS"):
                     enviar_arquivo(nome_arquivo, sock, posicao)
-                    
+            
             elif comando == "MULTI" and len(partes) > 1:
                 mascara = partes[1]
                 resposta = listar_arquivos_mascara(mascara)
                 sock.send(resposta.encode("utf-8"))
                 
-                #Esperar confirmação para cada arquivo
+                # Esperar solicitações de download individuais
                 while True:
                     confirmacao = sock.recv(4096).decode("utf-8").strip()
-                    if confirmacao == "CONFIRM":
-                        nome_arquivo = sock.recv(4096).decode("utf-8").strip()
+                    if confirmacao.startswith("DOWNLOADMULTI"):
+                        nome_arquivo = confirmacao.split("&")[1]
                         enviar_arquivo(nome_arquivo, sock)
+                        
+                        # Esperar confirmação de que o cliente está pronto para o próximo
+                        pronto = sock.recv(4096).decode("utf-8").strip()
+                        if pronto != "PRONTO":
+                            break
                     else:
                         break
+
+            # elif comando == "MULTI" and len(partes) > 1:
+            #     mascara = partes[1]
+            #     resposta = listar_arquivos_mascara(mascara)
+            #     sock.send(resposta.encode("utf-8"))
+                
+            #     #Esperar confirmação para cada arquivo
+            #     while True:
+            #         confirmacao = sock.recv(4096).decode("utf-8").strip()
+            #         if confirmacao == "CONFIRM":
+            #             nome_arquivo = sock.recv(4096).decode("utf-8").strip()
+            #             enviar_arquivo(nome_arquivo, sock)
+            #         else:
+            #             break
                         
             elif comando == "HASH" and len(partes) > 2:
                 nome_arquivo = partes[1]
