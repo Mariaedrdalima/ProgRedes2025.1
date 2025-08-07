@@ -1,95 +1,112 @@
 #!/usr/bin/env python3
 
 ##########################################>>> IMPORTANDO BIBLIOTECAS E ARQUIVOS ADICIONAIs <<<##########################################
-import socket, threading, os, struct
-#from secret import BOT_TOKEN   # Importando o token do bot de um arquivo secreto
-
-
+import socket, threading, os, hashlib, glob
 
 #######################################################>>> SESSÃO DE REDE/SOCKET <<<#######################################################
-#Definindo porta e ip para o socket do servidor
 PORT = 20000
-SERVER = 'localhost'  # Pode ser alterado para o IP do servidor se necessário
+SERVER = 'localhost'
+PASTA_CLIENTE = 'arquivos_cliente'
 
-
+# Criar pasta do cliente se não existir
+if not os.path.exists(PASTA_CLIENTE):
+    os.makedirs(PASTA_CLIENTE)
 
 ########################################>>> DEFININDO FUNÇÕES DO CLIENTE/COMUNICAÇÃO COM O SERVER <<<########################################
-# Exibindo menu ao cliente
 def showMenu():
     print("""
         Escolha uma opção:
         1 - Listar arquivos do servidor
         2 - Download de 1 arquivo      
-        3 - Continuar Download
-        4 - Download de vários arquivos
-        5 - Sair
+        3 - Continuar Download interrompido
+        4 - Download de vários arquivos (com máscara)
+        5 - Obter hash MD5 de arquivo
+        6 - Sair
           
         Digite o número da opção desejada: """, end="")
     
-    escolha=int(input())
+    try:
+        escolha = int(input())
+        return escolha
+    except ValueError:
+        print("\nEntrada inválida! Digite um número.")
+        return 0
 
-    return escolha
+def enviar_comando(comando):
+    try:
+        sockServer.send(comando.encode("utf-8"))
+        resposta = sockServer.recv(4096).decode("utf-8")
+        return resposta
+    except Exception as e:
+        print(f"\nErro na comunicação: {e}")
+        return "ERRO"
 
-
-#Função para enviar pedido de listagem de arquivos
-
-def get_arq_list():
-    sockServer.send(('LIST').encode("utf-8"))
-    arq_list = sockServer.recv(4096).decode()
-    data = arq_list.split("&")
-
-    # Verificando se a resposta do servidor é de sucesso para entender a lista de arquivos
-    if data[0] == "SUCESS":
-        arq_list = data[1].split("\n")
-
-        if arq_list:
-            print("""\nLista de arquivos disponíveis no servidor:""")
-
-            for i, arq in enumerate(arq_list, start=1):
-                print(f"""{i} - {arq}""")
-            print(40* """*""")
-
-            sockServer.close()
-
-        else:
-            print("O servidor não possui arquivos para compartilhar.")
+def listar_arquivos():
+    resposta = enviar_comando("LIST")
+    if resposta.startswith("SUCESS"):
+        arquivos = resposta.split("|")[1].split("\n")
+        print("\n=== Arquivos no servidor ===")
+        for arq in arquivos:
+            if arq:  # Ignorar linhas vazias
+                nome, tamanho = arq.split(";")
+                print(f"{nome} - {tamanho} bytes")
+        print("============================")
     else:
-        print(f"ERRO: {data[0]}")
-
-
-
-
-
-
-#Função para enviar pedido de download de arquivo
-def get_down(arq_down):
-
-    sockServer.send(('DOWN'+"&"+arq_down).encode("utf-8"))
-    arq_down = sockServer.recv(8192)  # Recebendo confirmação de download
-
-    # if arq_down:
-    #     print(f"Download do arquivo '{arq_down.decode()}' iniciado.")
-
-    #     # Abrindo o arquivo para escrita
-    #     with open(arq_down.decode(), 'wb') as f:
-
-    #         while True:
-    #             data = sockServer.recv(4096)
-    #             if not data:
-    #                 break
-    #             f.write(data)
-
-    #     print(f"Download do arquivo '{arq_down.decode()}' concluído.")
-
-    #     showMenu()
-
-
-
-
+        print("\nErro ao listar arquivos:", resposta)
+ 
 
 
 #########################################################>>> INICIANDO CLIENTE <<<#########################################################
+
+
+global sockServer
+    
 while True:
+    try:
+        sockServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+        sockServer.connect((SERVER, PORT))
+            
+        while True:
+            escolha = showMenu()
+                
+            if escolha == 1:
+                listar_arquivos()
+            elif escolha == 2:
+                download_arquivo()
+            elif escolha == 3:
+                continuar_download()
+            elif escolha == 4:
+                download_multiplo()
+            elif escolha == 5:
+                obter_hash()
+            elif escolha == 6:
+                enviar_comando("EXIT")
+                print("\nSaindo...")
+                break
+            else:
+                print("\nOpção inválida!")
+                
+                # Reconectar para próxima operação
+                sockServer.close()
+                break
+                
+    except ConnectionRefusedError:
+        print("\nNão foi possível conectar ao servidor. Verifique se o servidor está rodando.")
+        break
+    except KeyboardInterrupt:
+        print("\nSaindo...")
+        if 'sockServer' in globals():
+            sockServer.close()
+        break
+    except Exception as e:
+        print(f"\nErro: {e}")
+        if 'sockServer' in globals():
+            sockServer.close()
+        break
+
+
+while True:
+    global sockServer
     #iniciando o socket do servidor
     sockServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
     sockServer.connect((SERVER, PORT)) #Conectando ao servidor
@@ -113,9 +130,6 @@ while True:
         elif escolha == 5:
             print("\n Saindo...")
             break
-
-
-
 
 
 

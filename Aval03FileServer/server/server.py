@@ -7,22 +7,7 @@ PORT = 20000
 allClients = []
 
 
-
-print("Cliente pediu lista de arquivos")
-diretorio = os.path.dirname(os.path.abspath(__file__))
-
-arq_list = os.listdir(os.path.join(diretorio, 'arquivos'))
-#arq_list = ("\n".join(arq_list))
-
-tam = sys.getsizeof(arq_list)
-
-print(arq_list)
-print(tam)
-
-
-
-# ##########################################>>> IMPORTANDO BIBLIOTECAS E ARQUIVOS ADICIONAIs <<<##########################################
-
+# ###################################################>>> TRATANDO SOLICITAÇÕES DO CLIENTE <<<#############################################
 def send_arq_list():
     # Obtendo a lista de arquivos do servidor
     print("Cliente pediu lista de arquivos")
@@ -40,12 +25,6 @@ def send_arq_list():
     sockCon.close()
     return 'break'
 
-
-
-
-
-
-# ###################################################>>> TRATANDO SOLICITAÇÕES DO CLIENTE <<<#############################################
 
 def trataCliente(sockCon, origem):
     print(f"Tratando conexão com {origem}")
@@ -86,10 +65,6 @@ def trataCliente(sockCon, origem):
             sockCon.close()
             break
 
-            #allClients.remove(sockCon)
-
-        # print (f"Recebi de {origem} -> {msg.decode()}")
-        # sockCon.send()
         break
 
 
