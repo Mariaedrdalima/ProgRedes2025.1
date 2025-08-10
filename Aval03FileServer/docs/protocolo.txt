@@ -1,1 +1,110 @@
+PROTOCOLO DE COMUNICAÇÃO - SISTEMA CLIENTE/SERVIDOR
+
+############################################################################################################################################################################################
+Formato padrão da comunicação/troca entre o cliente e servidor:
+
+Cliente -> COMANDO&dados&dados&dados
+SERVIDOR -> STATUS$dados
+
+Temos dois status na resposta do Servidor:
+Caso: SUCESS&dados de resposta -> o sistema recebe e trata os dados
+
+
+O que podemos ver no cliente nos trechos:
+if resposta.startswith("SUCESS"): #Confirmando se o status foi de sucesso
+
+        arquivos = resposta.split("&")[1].split("\n") #separa o status dos dados enviados pelo servidor
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+caso: ERRO&mensagem de erro -> exibe o erro
+else:
+       
+        print("\nErro no download:", resposta.split("&")[1]) #Caso o status seja !=SUCESS, vamos pra o bloco onde ele separa o status e exibe o erro enviador pelo servidor
+
+
+############################################################################################################################################################################################
+Comandos suportados:
+
+1. Listar arquivos - LIST: 
+Descrição: Lista os arquivos disponíveis no servidor no diretório "arquivos" e ainda confirma que está listando somente os arquivos na pasta correta
+Requisição: "LIST&"
+
+O servidor vai montar uma lista concatentando "nomedoarquivo.extensão;tamanhodoarquivo"
+
+A resposta segue o padrão: SUCESS&nome1.txt;1234\nnome2.txt;5678\nnome3.txt;91011
+em caso de erro: ERRO&mensagem de erro
+
+
+
+2. Download de arquivo - DOWN&nome_arquivo:
+Descrição: Solicita o download de um arquivo
+Requisição: DOWN&nomearquivo.txt -> o Servidor recebe na função "enviar_arquivo": o nome do arquivo, a posição e a conexão.
+
+Resposta: ma função "enviar_arquivo" o server vai validar o caminho absoluto do arquivo. Depois vai verificar o tamanho do arquivo e enviar primeiro "SUCESS&tamanhodoarquivo" para o cliente saber o tamanho do arquivo
+e fazer as requisições corretamente. O cliente vai receber o tamanho do arquivo, vai "abrir" e começar a escrever nesse arquvo a medida que realiza as requisições de download, conferindo quanto requisitou e quanto falta.
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+3. Continuar Download - CONT&nome_arquivo&tamanho_atual&hash_local:
+
+Descrição: Retoma download interrompido.
+
+Requisição: CONT&arq.txt&2048&sadlkjasdkjhashhash (comando&nomearquivo&tamanho&hash)
+
+Resposta: O cliente mandou a quantidade de bytes que ele tem desse arquivo e o hash dessa parte, o servidor vai ler no arquivo a quantidade de bytes que o cliente tem e então calcula o hash.
+Se o hash dessa parte estiver correto, ai o arquivo que o cliente tem equivale ao que tenho no servidor e posso enviar o restante. O servidor agora vai enviar o restante dos bytes, o cliente vai controlando a quantidade de bytes baixados.
+
+Se o tamanho e o hash que o cliente enviar não bater com o que tem no servidor, o servidor envia: "ERRO&Hash não confere - arquivo corrompido ou modificado"
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+4. MULTI&mascara
+Descrição: Lista e baixa arquivos com um tipo de extensão
+
+Requisição: MULTI&*.txt-> o "*" é um coringa pra filtrar tudo que for igual a "*.extensão"
+
+Resposta: SUCESS&arq1.txt;123\narq2.txt;456 -> o Servidor vai preparar uma lista que contem só os arquivo+tamanho da extensão requisitada.
+Após enviar a lista, o servidor entra em outro look onde vai esperar "DOWNLOADMULTI" e vai começar a enviar os arquivos requisitados pelo cliente um por um, usando a mesma função "DOWN". O cliente executa um for na lista de arquivos que recebeu,
+para cada arquivo ele confirma se jpa existe, confirma se quer baixar novamente, baixa e salva e confirma que está pronto para o proximo, até que acabe a lista de arquivos enviada pelo servidor.
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+5. Verificar o hash do arquivo - HASH&nome_arquivo&posicao:
+Descrição: Retorna o hash MD5 do arquivo (total ou parcial)
+Requisição: cliente envia - >HASH&arq.txt&0
+Resposta: o Servidor confere e devolve -> SUCESS&hash
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+6. EXIT
+Descrição: Encerra a conexão
+Requisição: EXIT
+
+OBS.: Importante destacar que o processo de encerrar a aplicação do cliente estava dando erro, tentei colocar mais "breaks" e ainda assim persistia.
+Acredito que por ter um while seguido de try seguido de while, eu encerra "dentro" e externamente continuava rodando.
+Por esse motivo coloquei um "sys.exit()" pra conseguir fechar a aplicação do cliente ao selecionar "6 - sair".
+
+############################################################################################################################################################################################
+
+
+CONEXÃO e Multithreading:
+No cliente:
+- Eu crio um socket TCP/IP (SOCK_STREAM) e conecto ao servidor no endereço SERVER:PORT
+
+- Pra comunicação eu uso sockServer.send() para enviar comandos e sockServer.recv() para receber
+
+No servidor:
+Crio um socket que escuta em PORT
+sock_servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock_servidor.bind((SERVER, PORT))
+sock_servidor.listen(MAX_CONNECTIONS) #pra limitar as conexões nos meus testes
+
+Thread no servidor:
+eu crio uma "thread" para cada cliente que conecta:
+threading.Thread(target=tratar_cliente, args=(sock_cliente, endereco)).start()
+
+A thread principal fica apenas aceitando novas conexões: sock_cliente, endereco = sock_servidor.accept()
+
+
+Cada thread filha executa a função tratar_cliente() para um cliente específico: threading.Thread(target=tratar_cliente, args=(sock_cliente, endereco)).start()
+
+
+
 

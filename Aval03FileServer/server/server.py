@@ -1,0 +1,214 @@
+#! /usr/bin/env python3
+
+##########################################>>> IMPORTANDO BIBLIOTECAS E ARQUIVOS ADICIONAIs <<<##########################################
+import socket, threading, os, hashlib, glob, sys
+
+
+#######################################################>>> SESSÃO DE REDE/SOCKET e DIRETORIOS <<<#######################################################
+PORT = 20000
+SERVER = 'localhost'
+
+diretorio = os.path.dirname(os.path.abspath(__file__))
+PASTA_SERVIDOR = os.path.join(diretorio,'arquivos')
+MAX_CONNECTIONS = 5
+
+# Criar pasta do servidor se não existir
+if not os.path.exists(PASTA_SERVIDOR):
+    os.makedirs(PASTA_SERVIDOR)
+
+
+
+
+
+########################################>>> DEFININDO FUNÇÕES DO SERVIDOR/TRATAMENTO DE CLIENTES <<<########################################
+def verificar_caminho_seguro(caminho):
+    #Verifica se o caminho está dentro da pasta permitida
+    caminho_real = os.path.realpath(caminho)
+    pasta_real = os.path.realpath(PASTA_SERVIDOR)
+    return os.path.commonpath([caminho_real, pasta_real]) == pasta_real
+
+def listar_arquivos():
+
+    try:
+        arquivos = []
+
+        for arq in os.listdir(PASTA_SERVIDOR):
+            caminho = os.path.join(PASTA_SERVIDOR, arq)
+            
+            if os.path.isfile(caminho):
+                tamanho = os.path.getsize(caminho)
+                arquivos.append(f"{arq};{tamanho}")
+
+        return "SUCESS&" + "\n".join(arquivos)
+    
+    except Exception as e:
+        return f"ERRO&{str(e)}"
+
+def enviar_arquivo(nome_arquivo, sock, posicao=0):
+    caminho = os.path.join(PASTA_SERVIDOR, nome_arquivo)
+    
+    if not verificar_caminho_seguro(caminho) or not os.path.isfile(caminho):
+        sock.send("ERRO&Arquivo não encontrado ou acesso negado".encode("utf-8"))
+        return
+    
+    tamanho = os.path.getsize(caminho)
+    sock.send(f"SUCESS&{tamanho}".encode("utf-8"))
+    
+    with open(caminho, 'rb') as f:
+        if posicao > 0:
+            f.seek(posicao)
+        while True:
+            dados = f.read(4096)
+            if not dados:
+                break
+            sock.send(dados)
+
+def calcular_hash(nome_arquivo, posicao):
+    caminho = os.path.join(PASTA_SERVIDOR, nome_arquivo)
+    
+    if not verificar_caminho_seguro(caminho) or not os.path.isfile(caminho):
+        return "ERRO&Arquivo não encontrado ou acesso negado"
+    
+    md5 = hashlib.md5()
+    with open(caminho, 'rb') as f:
+        if posicao > 0:
+            dados = f.read(posicao)
+        else:
+            dados = f.read()
+        md5.update(dados)
+    
+    return f"SUCESS&{md5.hexdigest()}"
+
+def continuar_download(nome_arquivo, posicao, hash_cliente):
+    caminho = os.path.join(PASTA_SERVIDOR, nome_arquivo)
+    
+    if not verificar_caminho_seguro(caminho) or not os.path.isfile(caminho):
+        return "ERRO&Arquivo não encontrado ou acesso negado"
+    
+    # Verificar hash da parte existente
+    md5 = hashlib.md5() #abre o arquivo no modo leitura binária
+    with open(caminho, 'rb') as f: 
+        dados = f.read(posicao)
+        md5.update(dados) 
+    
+    if md5.hexdigest() != hash_cliente:
+        return "ERRO&Hash não confere - arquivo corrompido ou modificado"
+    
+    tamanho_total = os.path.getsize(caminho)
+    return f"SUCESS&{tamanho_total}"
+
+def listar_arquivos_mascara(mascara):
+    try:
+        arquivos = []
+        caminho_mascara = os.path.join(PASTA_SERVIDOR, mascara)
+        
+        for caminho in glob.glob(caminho_mascara):
+            if os.path.isfile(caminho) and verificar_caminho_seguro(caminho):
+                nome = os.path.basename(caminho)
+                tamanho = os.path.getsize(caminho)
+                arquivos.append(f"{nome};{tamanho}")
+        
+        return "SUCESS&" + "\n".join(arquivos)
+    except Exception as e:
+        return f"ERRO&{str(e)}"
+
+
+
+#######################################################>>> TRATANDO SOLICITAÇÕES DO CLIENTE <<<#######################################################
+def tratar_cliente(sock, endereco):
+    print(f"Conexão estabelecida com {endereco}")
+
+    '''Aqui eu recebo os primeiros 4096 bytes para identificar o comando e depois vou tratando conforme o comando recebido.
+        Se o comando for inválido, envio uma mensagem de erro e continuo aguardando novos comandos.'''
+    
+    try:
+        while True:
+            #recebe os primeiros 8192 bytes do cliente paa receber o comando, qualquer valor acima disso é imcompativel com o cliente que eu desenvolvi
+            dados = sock.recv(8192).decode("utf-8").strip()
+
+            print(f"Dados recebidos do cliente {endereco}: {dados}")
+
+            if not dados:
+                print(f"ERRO: Requisição vazia, encerrando conexão com {endereco}")
+                sock.send(("ERRO&Requisição inválida").encode("utf-8"))
+                
+            partes = dados.split("&")
+            comando = partes[0].upper()
+            
+            if comando == "LIST":
+                resposta = listar_arquivos() #a resposta recebe a lista criada na função listar_arquivos, que concatena "arquivo;Tamanho" de cada arquivo
+                sock.send(resposta.encode("utf-8"))
+                
+            elif comando == "DOWN" and len(partes) > 1:
+                nome_arquivo = partes[1] #pega somente o nome do arquivo após o '&'
+                enviar_arquivo(nome_arquivo, sock)
+                
+                
+            elif comando == "CONT" and len(partes) > 3:
+                nome_arquivo = partes[1]
+                posicao = int(partes[2])
+                hash_cliente = partes[3]
+                resposta = continuar_download(nome_arquivo, posicao, hash_cliente)
+                sock.send(resposta.encode("utf-8"))
+                
+                #Se o hash conferir, enviar o restante do arquivo
+                if resposta.startswith("SUCESS"):
+                    enviar_arquivo(nome_arquivo, sock, posicao)
+            
+            elif comando == "MULTI" and len(partes) > 1:
+                mascara = partes[1]
+                resposta = listar_arquivos_mascara(mascara)
+                sock.send(resposta.encode("utf-8"))
+                
+                #Esperar solicitações de download individuais
+                while True:
+                    confirmacao = sock.recv(4096).decode("utf-8").strip() #recebe o comando de download individual do cliente
+                    if confirmacao.startswith("DOWNLOADMULTI"):
+                        nome_arquivo = confirmacao.split("&")[1]
+                        enviar_arquivo(nome_arquivo, sock) #usa a mesma função de envio de arquivo (0o0)
+                        
+                        # Esperar confirmação de que o cliente está pronto para o próximo
+                        pronto = sock.recv(4096).decode("utf-8").strip()
+                        if pronto != "PRONTO":
+                            break
+                        
+                    else:
+                        print(f"ERRO: Comando inválido recebido: {confirmacao}")
+                        sock.send("ERRO&Comando inválido".encode("utf-8"))                        
+                break
+
+            elif comando == "HASH" and len(partes) > 2:
+                nome_arquivo = partes[1]
+                posicao = int(partes[2])
+                resposta = calcular_hash(nome_arquivo, posicao)
+                sock.send(resposta.encode("utf-8"))
+                
+                
+            elif comando == "EXIT":
+                print(f"Cliente {endereco} solicitou encerramento.")
+                print(f"Conexão com {endereco} encerrada.")
+                sock.close()
+                break
+                
+                
+            else:
+                sock.send("ERRO&Comando inválido".encode("utf-8"))
+                
+    except Exception as e:
+        print(f"Erro com cliente {endereco}: {str(e)}")
+
+#########################################################>>> INICIANDO SERVIDOR <<<#########################################################
+sock_servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Cria o socket do servidor
+sock_servidor.bind((SERVER, PORT)) #Associa o socket ao endereço e porta
+sock_servidor.listen(MAX_CONNECTIONS) #Fica escutando por conexões de clientes
+
+print(f"Servidor iniciado em {SERVER}:{PORT}. Aguardando conexões...")
+
+try:
+    while True:
+        sock_cliente, endereco = sock_servidor.accept() #Aceita a conexão de um cliente
+        threading.Thread(target=tratar_cliente, args=(sock_cliente, endereco)).start() #Cria uma nova thread para tratar o cliente
+
+except KeyboardInterrupt: #aqui não está funcionando bem
+    print("\nServidor encerrado.")
+    sock_servidor.close()
