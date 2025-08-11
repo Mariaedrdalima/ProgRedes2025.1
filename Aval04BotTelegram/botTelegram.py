@@ -3,7 +3,7 @@ import socket, ssl, json, time, subprocess
 import subprocess #importa a biblioteca subprocess para executar comandos de rede no terminal
 
 #Nome do bot: madunetbot
-TOKEN = "7664947436:AAF0k-DAtlFJ9eAz38GbkabGqaLej4RaTpw" #token do bot
+TOKEN = "" #token do bot
 
 HOST  = "api.telegram.org"
 PORT  = 443
@@ -80,11 +80,6 @@ def answer_update(update):
 def exec_comando(comando):
 
 def exec_ping():
-def exec_route_print():
-def exec_nslookup()
-def download_image()
-def scan_ports_open():
-
     # if comando == "/ping":
     # # Comando completo como string, shell=True para interpretar pipe e findstr
     # comando = 'ipconfig | findstr "IPv4 Gateway"'
@@ -95,6 +90,13 @@ def scan_ports_open():
 
     # gateway = resultado.stdout.splitlines()[1].split(":")[1].strip()
     # ip_server = resultado.stdout.splitlines()[0].split(":")[1].strip()
+
+def exec_route_print():
+def exec_nslookup()
+def download_image()
+def scan_ports_open():
+
+
 
 
 ################################################ FUNÇÃO PRINCIPAL ##############################################################
