@@ -3,7 +3,7 @@ import socket, ssl, json, time, subprocess
 import subprocess #importa a biblioteca subprocess para executar comandos de rede no terminal
 
 #Nome do bot: madunetbot
-TOKEN = "" #token do bot
+TOKEN = "7664947436:AAF0k-DAtlFJ9eAz38GbkabGqaLej4RaTpw" #token do bot
 
 HOST  = "api.telegram.org"
 PORT  = 443
@@ -52,7 +52,8 @@ def get_updates(sock_tcp, offset = 0):
 def show_update(update):
     print(update)
     print (update["message"]["chat"]["first_name"], "->", update["message"]["text"])
-    
+
+
 def answer_update(update):
     sock_tcp = conn_to()
 
@@ -77,24 +78,72 @@ def answer_update(update):
 
 ################################################ FUNÇÕES IMPLEMENTADAS ##############################################################
 
+#Editei a função answer_update para receber um parâmetro de resposta s
+# def answer_update(update, answer):
+#     sock_tcp = conn_to()
+
+#     chat_id  = update["message"]["chat"]["id"]
+
+#     response = '{"chat_id":'+str(chat_id)+', "text":"'+answer+'"}'
+
+#     resource = "/bot"+TOKEN+"/sendMessage"
+
+#     sock_tcp.send (("POST "+resource+" HTTP/1.1\r\n"+
+#                     "Host: "+HOST+"\r\n"+
+#                     "Content-Length: "+str(len(response))+"\r\n"
+#                     "Content-Type: application/json\r\n"
+#                     "\r\n").encode("utf-8"))
+    
+#     sock_tcp.send (response.encode("utf-8"))
+#     get_response(sock_tcp)
+#     sock_tcp.close()
+#     return update["update_id"]
+
 def exec_comando(comando):
+    resultado = subprocess.run(comando, capture_output=True, text=True, shell=True)
+    return resultado.stdout
 
 def exec_ping():
-    # if comando == "/ping":
-    # # Comando completo como string, shell=True para interpretar pipe e findstr
-    # comando = 'ipconfig | findstr "IPv4 Gateway"'
 
-    # resultado = subprocess.run(comando, capture_output=True, text=True, shell=True)
+    resultado1 = exec_comando('ipconfig | findstr \"IPv4 Gateway\"')
+    print("resultado1 completo:",resultado1)
 
-    # print(resultado.stdout.splitlines()[1])
+    gateway = resultado1.splitlines()[1].split(":")[1].strip()
+    print
 
-    # gateway = resultado.stdout.splitlines()[1].split(":")[1].strip()
-    # ip_server = resultado.stdout.splitlines()[0].split(":")[1].strip()
+    ip_server = resultado1.splitlines()[0].split(":")[1].strip()
+    print("IP do server:", ip_server)
 
-def exec_route_print():
-def exec_nslookup()
-def download_image()
-def scan_ports_open():
+    resultado = exec_comando(f'ping {gateway} -n 4')
+
+    print("resultado completo:",resultado)
+
+# def exec_route_print():
+# def exec_nslookup()
+# def download_image()
+# def exec_scan_ports():
+
+# def answer_update(update):
+#     sock_tcp = conn_to()
+
+#     chat_id  = update["message"]["chat"]["id"]
+
+#     answer = input ("Sua resposta: ")
+
+#     response = '{"chat_id":'+str(chat_id)+', "text":"'+answer+'"}'
+
+#     resource = "/bot"+TOKEN+"/sendMessage"
+
+#     sock_tcp.send (("POST "+resource+" HTTP/1.1\r\n"+
+#                     "Host: "+HOST+"\r\n"+
+#                     "Content-Length: "+str(len(response))+"\r\n"
+#                     "Content-Type: application/json\r\n"
+#                     "\r\n").encode("utf-8"))
+    
+#     sock_tcp.send (response.encode("utf-8")) 
+#     get_response(sock_tcp)
+#     sock_tcp.close()
+#     return update["update_id"]
 
 
 
@@ -108,12 +157,33 @@ def main():
     last_update = 0
 
     while True:
-        updates = get_updates(sock_tcp, last_update+1)
-        print()
+        updates = get_updates(sock_tcp, last_update+1)     
+        
+
         for update in updates:
-            #show_update(update)
-            get_comando(update(update["message"]["text"]))
-            last_update = answer_update(update)
+            solicitacao = update["message"]["text"]
+
+            if solicitacao == "/ping":
+                exec_ping()
+
+            # elif solicitacao == "/route_print":
+            #     exec_ping()
+
+            # elif solicitacao == "/nslookup":
+            #     exec_ping()
+
+            # elif solicitacao == "/Baixar_imagem".upper():
+            #     exec_ping()
+
+            # elif solicitacao.startswit("/escanear portas"):
+            #     scan_ports()
+
+            # else:
+            #     envio_resposta()
+
+        # for update in updates:
+        #     #show_update(update)
+        #     last_update = answer_update(update)
         print ("-------------")
 
         time.sleep(2)
