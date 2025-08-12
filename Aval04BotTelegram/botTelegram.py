@@ -57,68 +57,21 @@ def show_update(update):
 
 ################################################ FUNÇÕES IMPLEMENTADAS ##############################################################
 
-#Só editei a função do professor para: receber a "resposta" da função solicitada pelo cliente -> formatar e devolver pro cliente no telegram. Sem mais input.
-# def answer_update(update,resposta):
-#     sock_tcp = conn_to()
+#Editei a função do professor para: receber a "resposta" da função solicitada pelo cliente -> devolver pro cliente no telegram. Sem mais input.
+#Também foi necessário confirmar o tamanho da resposta antes de enviar, o telegram só suporte até 4096 bytes então se tiver mais de 4000bytes o envio é particionado
 
-#     chat_id  = update["message"]["chat"]["id"]
 
-#     answer = resposta #input ("Sua resposta: ") - editei essa linha
-
-#     response = json.dumps({
-#         "chat_id":chat_id,
-#         "text":answer
-#         }, ensure_ascii=False)
-
-#     print(response)
-
-#     resource = "/bot"+TOKEN+"/sendMessage"
-
-#     if len(response) > 4096:
-#         MAX_LEN = 4000
-#         for i in range(0, len(answer), MAX_LEN):
-            
-#             part = answer[i:i+MAX_LEN]
-
-#             response = json.dumps({"chat_id": chat_id, "text": part}, ensure_ascii=False)
-#             # envia cada parte separadamente
-    
-#     else: sock_tcp.send (("POST "+resource+" HTTP/1.1\r\n"+
-#                     "Host: "+HOST+"\r\n"+
-#                     "Content-Length: "+str(len(response))+"\r\n"
-#                     "Content-Type: application/json\r\n"
-#                     "\r\n").encode("utf-8"))
-    
-#     sock_tcp.send (response.encode("utf-8")) 
-#     get_response(sock_tcp)
-#     sock_tcp.close()
-#     return update["update_id"]
-
-def answer_update(update, resposta):
+def answer_update(update, tipo, resposta):
     sock_tcp = conn_to()
     chat_id = update["message"]["chat"]["id"]
-    resource = "/bot"+TOKEN+"/sendMessage"
+    
 
-    if len(resposta) > 4096:
-        MAX_LEN = 4000
-        for i in range(0, len(resposta), MAX_LEN):
-            part = resposta[i:i+MAX_LEN]
-            response = json.dumps({
-                "chat_id": chat_id,
-                "text": part
-            }, ensure_ascii=True)
-            
-            sock_tcp.send(("POST "+resource+" HTTP/1.1\r\n"+
-                          "Host: "+HOST+"\r\n"+
-                          "Content-Length: "+str(len(response))+"\r\n"
-                          "Content-Type: application/json\r\n"
-                          "\r\n").encode("utf-8"))
-            sock_tcp.send(response.encode("utf-8"))
-            get_response(sock_tcp)
-    else:
+    #verificando o tipo de mensagem para tratar o envio
+    if tipo == "imagem":
+        resource = f"/bot{TOKEN}/sendPhoto"
         response = json.dumps({
             "chat_id": chat_id,
-            "text": resposta
+            "photo": resposta
         }, ensure_ascii=True)
         
         sock_tcp.send(("POST "+resource+" HTTP/1.1\r\n"+
@@ -127,17 +80,75 @@ def answer_update(update, resposta):
                       "Content-Type: application/json\r\n"
                       "\r\n").encode("utf-8"))
         sock_tcp.send(response.encode("utf-8"))
+        print(response.encode("utf-8"))
         get_response(sock_tcp)
+        sock_tcp.close()
+        return update["update_id"]
     
+
+
+
+    #tratativa caso a resposta seja do tipo texto
+    else:
+        resource = "/bot{TOKEN}/sendMessage"
+
+    print(f"resource: {resource}")
+    print(f"resposta: {resposta}")
+
+
+    if len(resposta) > 4090: #testa se é maior que 4090 bytes, se for, vai dividir o envio em partes de 4000 bytes
+    
+        MAX_LEN = 4000
+
+        #a resposta pega a parte sendo de i até i+MAX_LEN, ex.: de 00:00+4000bytes que envia os primeiros 4000 bytes
+        #de 0 até o tamanho da resposta de 4000 em 4000 bytes
+        for i in range(0, len(resposta), MAX_LEN): 
+            parte = resposta[i:i+MAX_LEN] 
+
+            response = json.dumps({
+                "chat_id": chat_id,
+                "text": parte
+            }, ensure_ascii=True)
+            
+            sock_tcp.send(("POST "+resource+" HTTP/1.1\r\n"+
+                          "Host: "+HOST+"\r\n"+
+                          "Content-Length: "+str(len(response))+"\r\n"
+                          "Content-Type: application/json\r\n"
+                          "\r\n").encode("utf-8"))
+            sock_tcp.send(response.encode("utf-8"))
+
+            get_response(sock_tcp)
+
+    #se a resposta for menor que 4090 bytes faz o envio normal, o telegram vai receber tudo logo            
+    #aqui mantive o formato que o professor tinha feito, só ajustei o response para o formato json e evitar problema com caractere especial e espaço
+    else:
+        response = json.dumps({
+            "chat_id": chat_id,
+            "text": resposta
+        }, ensure_ascii=True)
+        print(f"response", response)
+        
+        sock_tcp.send(("POST "+resource+" HTTP/1.1\r\n"+
+                      "Host: "+HOST+"\r\n"+
+                      "Content-Length: "+str(len(response))+"\r\n"
+                      "Content-Type: application/json\r\n"
+                      "\r\n").encode("utf-8"))
+        sock_tcp.send(response.encode("utf-8"))
+        print(response.encode("utf-8"))
+        get_response(sock_tcp)
+
     sock_tcp.close()
     return update["update_id"]
 
 
 #separei a execução do comando em uma função isolada pra tirar a repetição
 def exec_comando(comando):
-    resultado = subprocess.run(comando, capture_output=True, text=True, shell=True, encoding='cp850')
+    resultado = subprocess.run(comando, capture_output=True, text=True, shell=True, encoding='cp850') #testei o encoding cp1250, cp1252, latin1 mas no geral o que resolveu os erros de caracteres foi esse "cp850"
     return resultado.stdout
 
+
+
+#Função pra executar o comando ping
 def exec_ping():
     #o primeiro resultado deve trazer o IP e o Gateway do servidor
     resultado1 = exec_comando('ipconfig | findstr \"IPv4 Gateway\"')
@@ -148,10 +159,13 @@ def exec_ping():
     resultado = exec_comando(f"ping {gateway} -n 4")
     mensagem = resultado.splitlines()[11].split("=")[3]
 
-    resposta = f"O ping entre {ip_server} e {gateway} tem uma média de resultado completo: {mensagem}"
+    resposta = f"O ping entre o ip server {ip_server} e gateway server {gateway} leva em media {mensagem}"
 
     return resposta
 
+
+
+#Função pra chamar o comando "route print" e devolver a tabela de roteamento do servidor pro cliente no telegram
 def exec_route_print():
     resultado = exec_comando("route print")
     linhas = resultado.splitlines()
@@ -162,13 +176,22 @@ def exec_route_print():
         if linha.strip():  #Ignora linhas vazias
             resposta += linha + "\n"
     
-    resposta = resposta.strip()  #Remove espaços em branco no início e no final
+    resposta = resposta  #Remove espaços em branco no início e no final
 
     return resposta
 
 
-# def exec_nslookup()
-# def download_image()
+#a função executa um "nslookup" com a barra no final onde ele da um erro de "dominio inexistente" e me devolve um stdout com o ip e nome do dns do server
+def exec_dns():
+    resultado = exec_comando("nslookup /")
+    nome_servidor = resultado.splitlines()[0].split(":")[1].strip()
+    ip_servidor = resultado.splitlines()[1].split(":")[1].strip()
+
+    resposta = f"Servidor DNS: {nome_servidor}\nIP do Servidor DNS: {ip_servidor}"
+
+    return resposta
+
+   
 # def exec_scan_ports():
 
 # def answer_update(update):
@@ -197,7 +220,7 @@ def exec_route_print():
 
 
 ################################################ FUNÇÃO PRINCIPAL ##############################################################
-#A função main() inicia a conexão com o servidor do Telegram, aceita atualizações e responde às mensagens recebidas.
+#A função main() inicia a conexão com o servidor do Telegram que aceita atualizações e responde aos clientes
 def main():
     sock_tcp = conn_to()
     print ("Aceitando updates ....")
@@ -210,34 +233,31 @@ def main():
 
         for update in updates:
             solicitacao = update["message"]["text"]
-
             if solicitacao == "/ping":
-                resposta = exec_ping()
-                last_update = answer_update(update, resposta)
                 show_update(update)
+                tipo = "texto"
+                resposta = exec_ping()
+                last_update = answer_update(update, tipo, resposta)
 
             elif solicitacao == "/route_print":
-                resposta = exec_route_print()
-                print(resposta)
-                last_update = answer_update(update, resposta)
                 show_update(update)
+                tipo = "texto"
+                resposta = exec_route_print()
+                last_update = answer_update(update, tipo, resposta)
 
-            # elif solicitacao == "/nslookup":
-            #     exec_ping()
+            elif solicitacao == "/dns":
+                show_update(update)
+                tipo = "texto"
+                resposta = exec_dns()
+                last_update = answer_update(update, tipo, resposta)
+                
+            elif solicitacao.startswith("/imagem"):
+                show_update(update)
+                tipo = "imagem"
+                resposta = update['message']['text'].split(" ")[1]
+                last_update = answer_update(update, tipo, resposta)
 
-            # elif solicitacao == "/Baixar_imagem".upper():
-            #     exec_ping()
-
-            # elif solicitacao.startswit("/escanear portas"):
-            #     scan_ports()
-
-            # else:
-            #     envio_resposta()
-
-        # for update in updates:
-        #     #show_update(update)
-        #     last_update = answer_update(update)
-        print ("-------------")
+            print ("-------------")
 
         time.sleep(2)
         
