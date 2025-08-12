@@ -100,23 +100,22 @@ def answer_update(update):
 #     return update["update_id"]
 
 def exec_comando(comando):
-    resultado = subprocess.run(comando, capture_output=True, text=True, shell=True)
+    resultado = subprocess.run(comando, capture_output=True, text=True, shell=True, encoding='cp1252')
     return resultado.stdout
 
 def exec_ping():
-
+    #o primeiro resultado deve trazer o IP e o Gateway do servidor
     resultado1 = exec_comando('ipconfig | findstr \"IPv4 Gateway\"')
-    print("resultado1 completo:",resultado1)
-
     gateway = resultado1.splitlines()[1].split(":")[1].strip()
-    print
-
     ip_server = resultado1.splitlines()[0].split(":")[1].strip()
-    print("IP do server:", ip_server)
 
-    resultado = exec_comando(f'ping {gateway} -n 4')
+    #o segundo resultado vai usar o gateway para fazer o ping
+    resultado = exec_comando(f"ping {gateway} -n 4")
+    mensagem = resultado.splitlines()[11].split("=")[3]
 
-    print("resultado completo:",resultado)
+    resposta = f"O ping entre {ip_server} e {gateway} tem uma média de resultado completo: {mensagem}"
+
+    return resposta
 
 # def exec_route_print():
 # def exec_nslookup()
