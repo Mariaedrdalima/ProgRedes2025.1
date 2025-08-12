@@ -53,53 +53,89 @@ def show_update(update):
     print (update["message"]["chat"]["first_name"], "->", update["message"]["text"])
 
 
-def answer_update(update,resposta):
-    sock_tcp = conn_to()
 
-    chat_id  = update["message"]["chat"]["id"]
-
-    answer = resposta #input ("Sua resposta: ")
-
-    response = '{"chat_id":'+str(chat_id)+', "text":"'+answer+'"}'
-
-    resource = "/bot"+TOKEN+"/sendMessage"
-
-    sock_tcp.send (("POST "+resource+" HTTP/1.1\r\n"+
-                    "Host: "+HOST+"\r\n"+
-                    "Content-Length: "+str(len(response))+"\r\n"
-                    "Content-Type: application/json\r\n"
-                    "\r\n").encode("utf-8"))
-    
-    sock_tcp.send (response.encode("utf-8")) 
-    get_response(sock_tcp)
-    sock_tcp.close()
-    return update["update_id"]
 
 ################################################ FUNÇÕES IMPLEMENTADAS ##############################################################
 
-#Editei a função answer_update para receber um parâmetro de resposta s
-# def answer_update(update, answer):
+#Só editei a função do professor para: receber a "resposta" da função solicitada pelo cliente -> formatar e devolver pro cliente no telegram. Sem mais input.
+# def answer_update(update,resposta):
 #     sock_tcp = conn_to()
 
 #     chat_id  = update["message"]["chat"]["id"]
 
-#     response = '{"chat_id":'+str(chat_id)+', "text":"'+answer+'"}'
+#     answer = resposta #input ("Sua resposta: ") - editei essa linha
+
+#     response = json.dumps({
+#         "chat_id":chat_id,
+#         "text":answer
+#         }, ensure_ascii=False)
+
+#     print(response)
 
 #     resource = "/bot"+TOKEN+"/sendMessage"
 
-#     sock_tcp.send (("POST "+resource+" HTTP/1.1\r\n"+
+#     if len(response) > 4096:
+#         MAX_LEN = 4000
+#         for i in range(0, len(answer), MAX_LEN):
+            
+#             part = answer[i:i+MAX_LEN]
+
+#             response = json.dumps({"chat_id": chat_id, "text": part}, ensure_ascii=False)
+#             # envia cada parte separadamente
+    
+#     else: sock_tcp.send (("POST "+resource+" HTTP/1.1\r\n"+
 #                     "Host: "+HOST+"\r\n"+
 #                     "Content-Length: "+str(len(response))+"\r\n"
 #                     "Content-Type: application/json\r\n"
 #                     "\r\n").encode("utf-8"))
     
-#     sock_tcp.send (response.encode("utf-8"))
+#     sock_tcp.send (response.encode("utf-8")) 
 #     get_response(sock_tcp)
 #     sock_tcp.close()
 #     return update["update_id"]
 
+def answer_update(update, resposta):
+    sock_tcp = conn_to()
+    chat_id = update["message"]["chat"]["id"]
+    resource = "/bot"+TOKEN+"/sendMessage"
+
+    if len(resposta) > 4096:
+        MAX_LEN = 4000
+        for i in range(0, len(resposta), MAX_LEN):
+            part = resposta[i:i+MAX_LEN]
+            response = json.dumps({
+                "chat_id": chat_id,
+                "text": part
+            }, ensure_ascii=True)
+            
+            sock_tcp.send(("POST "+resource+" HTTP/1.1\r\n"+
+                          "Host: "+HOST+"\r\n"+
+                          "Content-Length: "+str(len(response))+"\r\n"
+                          "Content-Type: application/json\r\n"
+                          "\r\n").encode("utf-8"))
+            sock_tcp.send(response.encode("utf-8"))
+            get_response(sock_tcp)
+    else:
+        response = json.dumps({
+            "chat_id": chat_id,
+            "text": resposta
+        }, ensure_ascii=True)
+        
+        sock_tcp.send(("POST "+resource+" HTTP/1.1\r\n"+
+                      "Host: "+HOST+"\r\n"+
+                      "Content-Length: "+str(len(response))+"\r\n"
+                      "Content-Type: application/json\r\n"
+                      "\r\n").encode("utf-8"))
+        sock_tcp.send(response.encode("utf-8"))
+        get_response(sock_tcp)
+    
+    sock_tcp.close()
+    return update["update_id"]
+
+
+#separei a execução do comando em uma função isolada pra tirar a repetição
 def exec_comando(comando):
-    resultado = subprocess.run(comando, capture_output=True, text=True, shell=True, encoding='cp1252')
+    resultado = subprocess.run(comando, capture_output=True, text=True, shell=True, encoding='cp850')
     return resultado.stdout
 
 def exec_ping():
@@ -116,7 +152,21 @@ def exec_ping():
 
     return resposta
 
-# def exec_route_print():
+def exec_route_print():
+    resultado = exec_comando("route print")
+    linhas = resultado.splitlines()
+    
+    resposta = "Tabela de Roteamento:\n"
+
+    for linha in linhas[1:]:
+        if linha.strip():  #Ignora linhas vazias
+            resposta += linha + "\n"
+    
+    resposta = resposta.strip()  #Remove espaços em branco no início e no final
+
+    return resposta
+
+
 # def exec_nslookup()
 # def download_image()
 # def exec_scan_ports():
@@ -166,8 +216,11 @@ def main():
                 last_update = answer_update(update, resposta)
                 show_update(update)
 
-            # elif solicitacao == "/route_print":
-            #     exec_ping()
+            elif solicitacao == "/route_print":
+                resposta = exec_route_print()
+                print(resposta)
+                last_update = answer_update(update, resposta)
+                show_update(update)
 
             # elif solicitacao == "/nslookup":
             #     exec_ping()
