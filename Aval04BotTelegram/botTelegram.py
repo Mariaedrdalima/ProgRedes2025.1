@@ -3,7 +3,7 @@ import socket, ssl, json, time, subprocess
 import subprocess #importa a biblioteca subprocess para executar comandos de rede no terminal
 
 #Nome do bot: madunetbot
-TOKEN = "7664947436:AAF0k-DAtlFJ9eAz38GbkabGqaLej4RaTpw" #token do bot
+TOKEN = "" #token do bot
 
 HOST  = "api.telegram.org"
 PORT  = 443
@@ -59,8 +59,7 @@ def show_update(update):
 
 #Editei a função do professor para: receber a "resposta" da função solicitada pelo cliente -> devolver pro cliente no telegram. Sem mais input.
 #Também foi necessário confirmar o tamanho da resposta antes de enviar, o telegram só suporte até 4096 bytes então se tiver mais de 4000bytes o envio é particionado
-
-
+#também adicionei um tratamento para ajustar o "formato" do envio se for uma imagem ou texto
 def answer_update(update, tipo, resposta):
     sock_tcp = conn_to()
     chat_id = update["message"]["chat"]["id"]
@@ -76,7 +75,7 @@ def answer_update(update, tipo, resposta):
         
 
     if len(resposta) > 4090: #testa se é maior que 4090 bytes, se for, vai dividir o envio em partes de 4000 bytes
-    
+        
         MAX_LEN = 4000
 
         #a resposta pega a parte sendo de i até i+MAX_LEN, ex.: de 00:00+4000bytes que envia os primeiros 4000 bytes
@@ -86,7 +85,7 @@ def answer_update(update, tipo, resposta):
 
             response = json.dumps({
             "chat_id": chat_id,
-            formato: resposta
+            formato: parte
             }, ensure_ascii=True)
             
             sock_tcp.send(("POST "+resource+" HTTP/1.1\r\n"+
@@ -119,10 +118,13 @@ def answer_update(update, tipo, resposta):
     return update["update_id"]
 
 
-#separei a execução do comando em uma função isolada pra tirar a repetição
+
+######################################################################################################################################
+#separei a execução do comando no cmd em uma função isolada pra tirar a repetição no corpo do código
 def exec_comando(comando):
     resultado = subprocess.run(comando, capture_output=True, text=True, shell=True, encoding='cp850') #testei o encoding cp1250, cp1252, latin1 mas no geral o que resolveu os erros de caracteres foi esse "cp850"
     return resultado.stdout
+
 
 
 
@@ -143,6 +145,7 @@ def exec_ping():
 
 
 
+
 #Função pra chamar o comando "route print" e devolver a tabela de roteamento do servidor pro cliente no telegram
 def exec_route_print():
     resultado = exec_comando("route print")
@@ -159,6 +162,8 @@ def exec_route_print():
     return resposta
 
 
+
+
 #a função executa um "nslookup" com a barra no final onde ele da um erro de "dominio inexistente" e me devolve um stdout com o ip e nome do dns do server
 def exec_dns():
     resultado = exec_comando("nslookup /")
@@ -172,8 +177,19 @@ def exec_dns():
 
 
 
+#Função pra obter todas as informações do sistema no pc onde o server está rodando
+def exec_systeminfo():
+    resultado = exec_comando("systeminfo")
+    print(resultado)
+
+    return resultado
+
+
+
+
 ################################################ FUNÇÃO PRINCIPAL ##############################################################
 #A função main() inicia a conexão com o servidor do Telegram que aceita atualizações e responde aos clientes
+
 def main():
     sock_tcp = conn_to()
     print ("Aceitando updates ....")
@@ -181,10 +197,12 @@ def main():
     last_update = 0
 
     while True:
-        updates = get_updates(sock_tcp, last_update+1)     
+        updates = get_updates(sock_tcp, last_update+1)#fluxo já disponibilizado pelo professor     
         
-
         for update in updates:
+            
+            #aqui eu vou checar qual comando o cliente pediu
+
             solicitacao = update["message"]["text"]
             if solicitacao == "/ping":
                 show_update(update)
@@ -208,6 +226,12 @@ def main():
                 show_update(update)
                 tipo = "imagem"
                 resposta = update['message']['text'].split(" ")[1]
+                last_update = answer_update(update, tipo, resposta)
+
+            elif solicitacao == "/systeminfo":
+                show_update(update)
+                tipo = "texto"
+                resposta = exec_systeminfo()
                 last_update = answer_update(update, tipo, resposta)
 
             print ("-------------")
