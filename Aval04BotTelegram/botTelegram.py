@@ -50,16 +50,15 @@ def get_updates(sock_tcp, offset = 0):
     return body["result"]
 
 def show_update(update):
-    print(update)
     print (update["message"]["chat"]["first_name"], "->", update["message"]["text"])
 
 
-def answer_update(update):
+def answer_update(update,resposta):
     sock_tcp = conn_to()
 
     chat_id  = update["message"]["chat"]["id"]
 
-    answer = input ("Sua resposta: ")
+    answer = resposta #input ("Sua resposta: ")
 
     response = '{"chat_id":'+str(chat_id)+', "text":"'+answer+'"}'
 
@@ -163,7 +162,9 @@ def main():
             solicitacao = update["message"]["text"]
 
             if solicitacao == "/ping":
-                exec_ping()
+                resposta = exec_ping()
+                last_update = answer_update(update, resposta)
+                show_update(update)
 
             # elif solicitacao == "/route_print":
             #     exec_ping()
