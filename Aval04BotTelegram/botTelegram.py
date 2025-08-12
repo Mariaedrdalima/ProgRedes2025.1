@@ -64,37 +64,16 @@ def show_update(update):
 def answer_update(update, tipo, resposta):
     sock_tcp = conn_to()
     chat_id = update["message"]["chat"]["id"]
-    
+    resource = f"/bot{TOKEN}/sendPhoto" if tipo == "imagem" else f"/bot{TOKEN}/sendMessage"
 
-    #verificando o tipo de mensagem para tratar o envio
     if tipo == "imagem":
         resource = f"/bot{TOKEN}/sendPhoto"
-        response = json.dumps({
-            "chat_id": chat_id,
-            "photo": resposta
-        }, ensure_ascii=True)
-        
-        sock_tcp.send(("POST "+resource+" HTTP/1.1\r\n"+
-                      "Host: "+HOST+"\r\n"+
-                      "Content-Length: "+str(len(response))+"\r\n"
-                      "Content-Type: application/json\r\n"
-                      "\r\n").encode("utf-8"))
-        sock_tcp.send(response.encode("utf-8"))
-        print(response.encode("utf-8"))
-        get_response(sock_tcp)
-        sock_tcp.close()
-        return update["update_id"]
+        formato = "photo"
     
-
-
-
-    #tratativa caso a resposta seja do tipo texto
     else:
-        resource = "/bot{TOKEN}/sendMessage"
-
-    print(f"resource: {resource}")
-    print(f"resposta: {resposta}")
-
+        resource = f"/bot{TOKEN}/sendMessage"
+        formato = "text"
+        
 
     if len(resposta) > 4090: #testa se é maior que 4090 bytes, se for, vai dividir o envio em partes de 4000 bytes
     
@@ -106,8 +85,8 @@ def answer_update(update, tipo, resposta):
             parte = resposta[i:i+MAX_LEN] 
 
             response = json.dumps({
-                "chat_id": chat_id,
-                "text": parte
+            "chat_id": chat_id,
+            formato: resposta
             }, ensure_ascii=True)
             
             sock_tcp.send(("POST "+resource+" HTTP/1.1\r\n"+
@@ -122,11 +101,11 @@ def answer_update(update, tipo, resposta):
     #se a resposta for menor que 4090 bytes faz o envio normal, o telegram vai receber tudo logo            
     #aqui mantive o formato que o professor tinha feito, só ajustei o response para o formato json e evitar problema com caractere especial e espaço
     else:
+        
         response = json.dumps({
             "chat_id": chat_id,
-            "text": resposta
+            formato: resposta
         }, ensure_ascii=True)
-        print(f"response", response)
         
         sock_tcp.send(("POST "+resource+" HTTP/1.1\r\n"+
                       "Host: "+HOST+"\r\n"+
@@ -134,7 +113,6 @@ def answer_update(update, tipo, resposta):
                       "Content-Type: application/json\r\n"
                       "\r\n").encode("utf-8"))
         sock_tcp.send(response.encode("utf-8"))
-        print(response.encode("utf-8"))
         get_response(sock_tcp)
 
     sock_tcp.close()
@@ -190,31 +168,6 @@ def exec_dns():
     resposta = f"Servidor DNS: {nome_servidor}\nIP do Servidor DNS: {ip_servidor}"
 
     return resposta
-
-   
-# def exec_scan_ports():
-
-# def answer_update(update):
-#     sock_tcp = conn_to()
-
-#     chat_id  = update["message"]["chat"]["id"]
-
-#     answer = input ("Sua resposta: ")
-
-#     response = '{"chat_id":'+str(chat_id)+', "text":"'+answer+'"}'
-
-#     resource = "/bot"+TOKEN+"/sendMessage"
-
-#     sock_tcp.send (("POST "+resource+" HTTP/1.1\r\n"+
-#                     "Host: "+HOST+"\r\n"+
-#                     "Content-Length: "+str(len(response))+"\r\n"
-#                     "Content-Type: application/json\r\n"
-#                     "\r\n").encode("utf-8"))
-    
-#     sock_tcp.send (response.encode("utf-8")) 
-#     get_response(sock_tcp)
-#     sock_tcp.close()
-#     return update["update_id"]
 
 
 
